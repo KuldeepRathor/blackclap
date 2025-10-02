@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "63006088249",
+    "project_id": "blackclap-b30ab",
+    "storage_bucket": "blackclap-b30ab.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:63006088249:android:306957e50fb97e515501e8",
+        "android_client_info": {
+          "package_name": "com.example.yours_bird"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA3bDd4kQVESCP0_6gZ1hg-wekxs_C4pvs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
