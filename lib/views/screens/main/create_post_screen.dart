@@ -188,7 +188,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       subtitle: Text(
         subtitle,
         style: const TextStyle(
-          color: AppColors.neutral300,
+          color: AppColors.textTertiary,
           fontSize: 12,
         ),
       ),
@@ -269,7 +269,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               onPressed: _isLoading ? null : _createPost,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.accent,
-                foregroundColor: Colors.white,
+                foregroundColor: AppColors.textOnAccent,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
@@ -281,7 +281,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       width: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.white,
+                        color: AppColors.textOnAccent,
                       ),
                     )
                   : const Text(
@@ -314,11 +314,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.neutral600),
+                    borderSide: BorderSide(color: AppColors.neutral300),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.neutral600),
+                    borderSide: BorderSide(color: AppColors.neutral300),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -339,14 +339,15 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 decoration: InputDecoration(
                   hintText: 'Add location',
                   hintStyle: TextStyle(color: AppColors.neutral400),
-                  prefixIcon: const Icon(Icons.location_on, color: AppColors.accent),
+                  prefixIcon:
+                      const Icon(Icons.location_on, color: AppColors.accent),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.neutral600),
+                    borderSide: BorderSide(color: AppColors.neutral300),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.neutral600),
+                    borderSide: BorderSide(color: AppColors.neutral300),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -409,10 +410,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                             borderRadius: BorderRadius.circular(16),
                             child: _mediaType == MediaType.video
                                 ? Container(
-                                    color: AppColors.neutral700,
+                                    color: AppColors.imagePlaceholder,
                                     child: const Center(
                                       child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           Icon(
                                             Icons.play_circle_outline,
@@ -451,7 +453,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                                 ),
                                 child: const Icon(
                                   Icons.close,
-                                  color: Colors.white,
+                                  color: AppColors.textOnAccent,
                                   size: 20,
                                 ),
                               ),

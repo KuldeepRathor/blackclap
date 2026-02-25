@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import '../../../repositories/mock_data_service.dart';
 import '../../../blocs/auth/auth_bloc.dart';
 import '../../../blocs/auth/auth_state.dart';
 import '../../../constants/color_constants.dart';
+import '../../widgets/comments_bottom_sheet.dart';
 
 class ReelsScreen extends StatefulWidget {
   const ReelsScreen({super.key});
@@ -36,7 +38,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
   @override
   void dispose() {
     _pageController.dispose();
-    _disposeControllers();
+    _disposeAllControllers();
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -46,9 +48,24 @@ class _ReelsScreenState extends State<ReelsScreen> {
     super.dispose();
   }
 
-  void _disposeControllers() {
+  void _disposeAllControllers() {
     for (final controller in _controllers.values) {
       controller.dispose();
+    }
+    _controllers.clear();
+  }
+
+  /// Fix memory leak: dispose controllers that are more than 2 positions away
+  void _disposeDistantControllers(int currentIndex) {
+    final toRemove = <int>[];
+    for (final index in _controllers.keys) {
+      if ((index - currentIndex).abs() > 2) {
+        _controllers[index]?.dispose();
+        toRemove.add(index);
+      }
+    }
+    for (final index in toRemove) {
+      _controllers.remove(index);
     }
   }
 
@@ -63,6 +80,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
 
   Future<void> _initializeVideo(int index) async {
     if (_controllers.containsKey(index)) return;
+    if (index < 0 || index >= _reels.length) return;
 
     final controller = VideoPlayerController.networkUrl(
       Uri.parse(_reels[index]['videoUrl']),
@@ -81,27 +99,23 @@ class _ReelsScreenState extends State<ReelsScreen> {
       debugPrint('Error initializing video at index $index: $e');
     }
 
-    // Preload next video
-    if (index + 1 < _reels.length) {
-      _initializeVideo(index + 1);
-    }
+    // Preload adjacent videos
+    if (index + 1 < _reels.length) _initializeVideo(index + 1);
   }
 
   void _onPageChanged(int index) {
-    // Pause previous video
     _controllers[_currentIndex]?.pause();
 
-    setState(() {
-      _currentIndex = index;
-    });
+    setState(() => _currentIndex = index);
 
-    // Play current video
     _controllers[index]?.play();
 
-    // Preload next video if needed
-    if (index + 1 < _reels.length && !_controllers.containsKey(index + 1)) {
+    if (!_controllers.containsKey(index + 1) && index + 1 < _reels.length) {
       _initializeVideo(index + 1);
     }
+
+    // Dispose controllers far from the viewport (memory leak fix)
+    _disposeDistantControllers(index);
   }
 
   Future<void> _toggleLike(String reelId, String userId) async {
@@ -114,9 +128,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
       await MockDataService.likeReel(reelId, userId);
     }
 
-    setState(() {
-      _reels = MockDataService.getReels();
-    });
+    setState(() => _reels = MockDataService.getReels());
   }
 
   @override
@@ -125,7 +137,6 @@ class _ReelsScreenState extends State<ReelsScreen> {
       backgroundColor: AppColors.primary,
       body: Stack(
         children: [
-          // Video PageView
           PageView.builder(
             controller: _pageController,
             scrollDirection: Axis.vertical,
@@ -165,17 +176,15 @@ class _ReelsScreenState extends State<ReelsScreen> {
                       const Text(
                         'Reels',
                         style: TextStyle(
-                          color: AppColors.onPrimary,
+                          color: Colors.white,
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.camera_alt_outlined),
-                        color: AppColors.onPrimary,
-                        onPressed: () {
-                          // Open camera to create reel
-                        },
+                        icon: const Icon(Icons.camera_alt_outlined,
+                            color: Colors.white),
+                        onPressed: () {},
                       ),
                     ],
                   ),
@@ -212,6 +221,7 @@ class _ReelItemState extends State<_ReelItem>
   late Animation<double> _scaleAnimation;
   bool _showHeart = false;
   bool _isPlaying = true;
+  bool _isFollowing = false;
 
   @override
   void initState() {
@@ -232,17 +242,10 @@ class _ReelItemState extends State<_ReelItem>
   }
 
   void _onDoubleTap(String userId) {
-    setState(() {
-      _showHeart = true;
-    });
-
+    setState(() => _showHeart = true);
     _animationController.forward().then((_) {
       _animationController.reverse().then((_) {
-        if (mounted) {
-          setState(() {
-            _showHeart = false;
-          });
-        }
+        if (mounted) setState(() => _showHeart = false);
       });
     });
 
@@ -265,12 +268,23 @@ class _ReelItemState extends State<_ReelItem>
     }
   }
 
-  String _formatNumber(int number) {
-    if (number >= 1000000) {
-      return '${(number / 1000000).toStringAsFixed(1)}M';
-    } else if (number >= 1000) {
-      return '${(number / 1000).toStringAsFixed(1)}K';
+  Future<void> _toggleFollow() async {
+    final authState = context.read<AuthBloc>().state;
+    if (authState is! AuthAuthenticated) return;
+    final currentUid = authState.user.uid;
+    final targetUid = widget.reel['uid'] as String;
+
+    setState(() => _isFollowing = !_isFollowing);
+    if (_isFollowing) {
+      await MockDataService.followUser(currentUid, targetUid);
+    } else {
+      await MockDataService.unfollowUser(currentUid, targetUid);
     }
+  }
+
+  String _formatNumber(int number) {
+    if (number >= 1000000) return '${(number / 1000000).toStringAsFixed(1)}M';
+    if (number >= 1000) return '${(number / 1000).toStringAsFixed(1)}K';
     return number.toString();
   }
 
@@ -284,10 +298,10 @@ class _ReelItemState extends State<_ReelItem>
         if (widget.videoController != null && widget.isVisible) {
           if (info.visibleFraction > 0.5) {
             widget.videoController!.play();
-            setState(() => _isPlaying = true);
+            if (mounted) setState(() => _isPlaying = true);
           } else {
             widget.videoController!.pause();
-            setState(() => _isPlaying = false);
+            if (mounted) setState(() => _isPlaying = false);
           }
         }
       },
@@ -306,8 +320,7 @@ class _ReelItemState extends State<_ReelItem>
               width: screenSize.width,
               height: screenSize.height,
               color: Colors.black,
-              child:
-                  widget.videoController != null &&
+              child: widget.videoController != null &&
                       widget.videoController!.value.isInitialized
                   ? Stack(
                       alignment: Alignment.center,
@@ -317,7 +330,6 @@ class _ReelItemState extends State<_ReelItem>
                               widget.videoController!.value.aspectRatio,
                           child: VideoPlayer(widget.videoController!),
                         ),
-                        // Play/Pause overlay
                         AnimatedOpacity(
                           opacity: !_isPlaying ? 1.0 : 0.0,
                           duration: const Duration(milliseconds: 300),
@@ -328,11 +340,8 @@ class _ReelItemState extends State<_ReelItem>
                               color: Colors.black.withOpacity(0.5),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
-                              Icons.play_arrow,
-                              color: AppColors.onPrimary,
-                              size: 50,
-                            ),
+                            child: const Icon(Icons.play_arrow,
+                                color: Colors.white, size: 50),
                           ),
                         ),
                       ],
@@ -343,20 +352,17 @@ class _ReelItemState extends State<_ReelItem>
                       width: screenSize.width,
                       height: screenSize.height,
                       placeholder: (context, url) => const Center(
-                        child: CircularProgressIndicator(color: AppColors.onPrimary),
+                        child: CircularProgressIndicator(color: Colors.white),
                       ),
                       errorWidget: (context, url, error) => const Center(
-                        child: Icon(
-                          Icons.error_outline,
-                          color: AppColors.onPrimary,
-                          size: 50,
-                        ),
+                        child: Icon(Icons.error_outline,
+                            color: Colors.white, size: 50),
                       ),
                     ),
             ),
           ),
 
-          // Gradient Overlay
+          // Gradient overlay
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -372,7 +378,7 @@ class _ReelItemState extends State<_ReelItem>
             ),
           ),
 
-          // Content Overlay
+          // Content Overlay (bottom-left)
           Positioned(
             left: 16,
             right: 80,
@@ -380,13 +386,10 @@ class _ReelItemState extends State<_ReelItem>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // User Info
                 Row(
                   children: [
                     GestureDetector(
-                      onTap: () {
-                        // Navigate to user profile
-                      },
+                      onTap: () => context.push('/user/${widget.reel['uid']}'),
                       child: CircleAvatar(
                         radius: 20,
                         backgroundColor: AppColors.surface,
@@ -395,26 +398,23 @@ class _ReelItemState extends State<_ReelItem>
                           backgroundColor: AppColors.accent,
                           backgroundImage:
                               widget.reel['profileImageUrl'] != null &&
-                                  widget.reel['profileImageUrl']
-                                      .toString()
-                                      .isNotEmpty
-                              ? CachedNetworkImageProvider(
-                                  widget.reel['profileImageUrl'],
-                                )
-                              : null,
-                          child:
-                              widget.reel['profileImageUrl'] == null ||
-                                  widget.reel['profileImageUrl']
-                                      .toString()
+                                      (widget.reel['profileImageUrl'] as String)
+                                          .isNotEmpty
+                                  ? CachedNetworkImageProvider(
+                                      widget.reel['profileImageUrl'],
+                                    )
+                                  : null,
+                          child: widget.reel['profileImageUrl'] == null ||
+                                  (widget.reel['profileImageUrl'] as String)
                                       .isEmpty
                               ? Text(
-                                  widget.reel['fullName'].toString().isNotEmpty
-                                      ? widget.reel['fullName']
-                                            .toString()[0]
-                                            .toUpperCase()
+                                  (widget.reel['fullName'] as String? ?? 'U')
+                                          .isNotEmpty
+                                      ? (widget.reel['fullName'] as String)[0]
+                                          .toUpperCase()
                                       : 'U',
                                   style: const TextStyle(
-                                    color: AppColors.onAccent,
+                                    color: Colors.white,
                                     fontSize: 14,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -424,70 +424,68 @@ class _ReelItemState extends State<_ReelItem>
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Text(
-                      widget.reel['username'] ?? 'unknown',
-                      style: const TextStyle(
-                        color: AppColors.onPrimary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                    GestureDetector(
+                      onTap: () => context.push('/user/${widget.reel['uid']}'),
+                      child: Text(
+                        widget.reel['username'] ?? 'unknown',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                     if (widget.reel['isVerified'] == true) ...[
                       const SizedBox(width: 4),
-                      const Icon(Icons.verified, color: AppColors.info, size: 16),
+                      const Icon(Icons.verified,
+                          color: AppColors.info, size: 16),
                     ],
                     const SizedBox(width: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.transparent,
-                        border: Border.all(color: AppColors.onPrimary),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Text(
-                        'Follow',
-                        style: TextStyle(
-                          color: AppColors.onPrimary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                    GestureDetector(
+                      onTap: _toggleFollow,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _isFollowing
+                              ? Colors.white.withOpacity(0.2)
+                              : Colors.transparent,
+                          border: Border.all(color: Colors.white),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          _isFollowing ? 'Following' : 'Follow',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
-
-                // Caption
                 if (widget.reel['caption'] != null &&
-                    widget.reel['caption'].toString().isNotEmpty)
+                    (widget.reel['caption'] as String).isNotEmpty)
                   Text(
                     widget.reel['caption'],
-                    style: const TextStyle(color: AppColors.onPrimary, fontSize: 15),
+                    style: const TextStyle(color: Colors.white, fontSize: 15),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
-
-                // Music Info
                 if (widget.reel['musicName'] != null) ...[
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Icon(
-                        Icons.music_note,
-                        color: AppColors.onPrimary,
-                        size: 16,
-                      ),
+                      const Icon(Icons.music_note,
+                          color: Colors.white, size: 16),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           widget.reel['musicName'],
                           style: const TextStyle(
-                            color: AppColors.onPrimary,
-                            fontSize: 14,
-                          ),
+                              color: Colors.white, fontSize: 14),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -498,7 +496,7 @@ class _ReelItemState extends State<_ReelItem>
             ),
           ),
 
-          // Side Action Buttons
+          // Side Action Buttons (right)
           Positioned(
             right: 12,
             bottom: 100,
@@ -509,16 +507,14 @@ class _ReelItemState extends State<_ReelItem>
                     final currentUserId = authState is AuthAuthenticated
                         ? authState.user.uid
                         : '';
-                    final isLiked = (widget.reel['likes'] as List).contains(
-                      currentUserId,
-                    );
+                    final isLiked =
+                        (widget.reel['likes'] as List).contains(currentUserId);
 
                     return _ActionButton(
                       icon: isLiked ? Icons.favorite : Icons.favorite_border,
-                      color: isLiked ? AppColors.like : AppColors.onPrimary,
-                      label: _formatNumber(
-                        (widget.reel['likes'] as List).length,
-                      ),
+                      color: isLiked ? AppColors.like : Colors.white,
+                      label:
+                          _formatNumber((widget.reel['likes'] as List).length),
                       onTap: () =>
                           widget.onLikeToggle(widget.reel['id'], currentUserId),
                     );
@@ -527,38 +523,42 @@ class _ReelItemState extends State<_ReelItem>
                 const SizedBox(height: 20),
                 _ActionButton(
                   icon: Icons.comment_outlined,
-                  color: AppColors.onPrimary,
-                  label: _formatNumber(widget.reel['comments']?.length ?? 0),
+                  color: Colors.white,
+                  label: _formatNumber(
+                      (widget.reel['comments'] as List?)?.length ?? 0),
                   onTap: () {
-                    // Show comments
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (_) =>
+                          CommentsBottomSheet(postId: widget.reel['id']),
+                    );
                   },
                 ),
                 const SizedBox(height: 20),
                 _ActionButton(
                   icon: Icons.send_outlined,
-                  color: AppColors.onPrimary,
+                  color: Colors.white,
                   label: _formatNumber(widget.reel['shares'] ?? 0),
-                  onTap: () {
-                    // Share reel
-                  },
+                  onTap: () {},
                 ),
                 const SizedBox(height: 20),
                 _ActionButton(
                   icon: Icons.more_vert,
-                  color: AppColors.onPrimary,
+                  color: Colors.white,
                   label: '',
-                  onTap: () {
-                    // Show more options
-                  },
+                  onTap: () {},
                 ),
                 const SizedBox(height: 20),
-                // Music disc animation
                 Container(
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
-                    image: widget.reel['profileImageUrl'] != null
+                    image: widget.reel['profileImageUrl'] != null &&
+                            (widget.reel['profileImageUrl'] as String)
+                                .isNotEmpty
                         ? DecorationImage(
                             image: CachedNetworkImageProvider(
                               widget.reel['profileImageUrl'],
@@ -566,16 +566,12 @@ class _ReelItemState extends State<_ReelItem>
                             fit: BoxFit.cover,
                           )
                         : null,
-                    color: widget.reel['profileImageUrl'] == null
-                        ? AppColors.accent
-                        : null,
+                    color: AppColors.accent,
                   ),
-                  child: widget.reel['profileImageUrl'] == null
-                      ? const Icon(
-                          Icons.music_note,
-                          color: AppColors.onPrimary,
-                          size: 20,
-                        )
+                  child: widget.reel['profileImageUrl'] == null ||
+                          (widget.reel['profileImageUrl'] as String).isEmpty
+                      ? const Icon(Icons.music_note,
+                          color: Colors.white, size: 20)
                       : null,
                 ),
               ],
@@ -587,22 +583,19 @@ class _ReelItemState extends State<_ReelItem>
             Center(
               child: AnimatedBuilder(
                 animation: _scaleAnimation,
-                builder: (context, child) {
-                  return Transform.scale(
-                    scale: _scaleAnimation.value,
-                    child: Icon(
-                      Icons.favorite,
-                      color: AppColors.onPrimary.withOpacity(
-                        1.0 - _animationController.value,
-                      ),
-                      size: 100,
-                    ),
-                  );
-                },
+                builder: (context, child) => Transform.scale(
+                  scale: _scaleAnimation.value,
+                  child: Icon(
+                    Icons.favorite,
+                    color: Colors.white
+                        .withOpacity(1.0 - _animationController.value),
+                    size: 100,
+                  ),
+                ),
               ),
             ),
 
-          // Bottom info bar
+          // Views count bar at bottom
           Positioned(
             left: 0,
             right: 0,
@@ -618,18 +611,11 @@ class _ReelItemState extends State<_ReelItem>
                 ),
               ),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  const Icon(
-                    Icons.home_outlined,
-                    color: AppColors.onPrimary,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 24),
-                  const Icon(Icons.search, color: AppColors.onPrimary, size: 24),
-                  const Spacer(),
                   Text(
                     '${_formatNumber(widget.reel['views'] ?? 0)} views',
-                    style: const TextStyle(color: AppColors.onPrimary, fontSize: 12),
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
                 ],
               ),
@@ -667,7 +653,7 @@ class _ActionButton extends StatelessWidget {
               child: Text(
                 label,
                 style: const TextStyle(
-                  color: AppColors.onPrimary,
+                  color: Colors.white,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),

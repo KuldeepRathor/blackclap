@@ -1,4 +1,4 @@
-package com.example.yours_bird
+package com.example.blackclap
 
 import io.flutter.embedding.android.FlutterActivity
 

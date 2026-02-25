@@ -9,6 +9,7 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
     on<PostsRefreshRequested>(_onRefreshRequested);
     on<PostsLikeToggled>(_onLikeToggled);
     on<PostsCreateRequested>(_onCreateRequested);
+    on<PostsDeleteRequested>(_onDeleteRequested);
   }
 
   Future<void> _onLoadRequested(
@@ -78,6 +79,19 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
       emit(PostsLoaded(posts: posts));
     } catch (e) {
       emit(PostsCreateError(message: e.toString()));
+    }
+  }
+
+  Future<void> _onDeleteRequested(
+    PostsDeleteRequested event,
+    Emitter<PostsState> emit,
+  ) async {
+    try {
+      await MockDataService.deletePost(event.postId);
+      final updatedPosts = MockDataService.getPosts();
+      emit(PostsLoaded(posts: updatedPosts));
+    } catch (e) {
+      emit(PostsError(message: e.toString()));
     }
   }
 }

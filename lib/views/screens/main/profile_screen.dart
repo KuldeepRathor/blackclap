@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 import '../../../blocs/auth/auth_bloc.dart';
 import '../../../blocs/auth/auth_state.dart';
 import '../../../blocs/auth/auth_event.dart';
@@ -64,39 +65,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        title: BlocBuilder<AuthBloc, AuthState>(
-          builder: (context, state) {
-            if (state is AuthAuthenticated) {
-              return Text(
-                state.user.username,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.onSurface,
-                ),
-              );
-            }
-            return const Text('Profile');
-          },
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add_box_outlined, color: AppColors.onSurface),
-            onPressed: () {
-              // Create post
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.menu, color: AppColors.onSurface),
-            onPressed: () {
-              // Show menu
-              _showProfileMenu(context);
-            },
-          ),
-        ],
-      ),
       body: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {
           if (state is AuthAuthenticated) {
@@ -107,6 +75,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                   SliverToBoxAdapter(
                     child: Column(
                       children: [
+                        // Custom AppBar
+                        _buildCustomAppBar(user.username),
                         // Profile Header
                         Padding(
                           padding: const EdgeInsets.all(16),
@@ -114,8 +84,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                             children: [
                               // Profile Image and Stats
                               Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceEvenly,
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   // Profile Image
                                   CircleAvatar(
@@ -123,10 +92,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                                     backgroundColor: AppColors.accent,
                                     backgroundImage:
                                         user.profileImageUrl.isNotEmpty
-                                        ? CachedNetworkImageProvider(
-                                            user.profileImageUrl,
-                                          )
-                                        : null,
+                                            ? CachedNetworkImageProvider(
+                                                user.profileImageUrl,
+                                              )
+                                            : null,
                                     child: user.profileImageUrl.isEmpty
                                         ? Text(
                                             user.fullName.isNotEmpty
@@ -141,6 +110,15 @@ class _ProfileScreenState extends State<ProfileScreen>
                                         : null,
                                   ),
                                   // Stats
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  // SizedBox(width: 2),
                                   _buildStatColumn(
                                     user.posts.length.toString(),
                                     'Posts',
@@ -166,13 +144,13 @@ class _ProfileScreenState extends State<ProfileScreen>
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      user.fullName,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
+                                    // Text(
+                                    //   user.fullName,
+                                    //   style: const TextStyle(
+                                    //     fontWeight: FontWeight.bold,
+                                    //     fontSize: 16,
+                                    //   ),
+                                    // ),
                                     if (user.bio.isNotEmpty) ...[
                                       const SizedBox(height: 4),
                                       Text(
@@ -190,11 +168,12 @@ class _ProfileScreenState extends State<ProfileScreen>
                                               (interest) => Container(
                                                 padding:
                                                     const EdgeInsets.symmetric(
-                                                      horizontal: 12,
-                                                      vertical: 6,
-                                                    ),
+                                                  horizontal: 12,
+                                                  vertical: 6,
+                                                ),
                                                 decoration: BoxDecoration(
-                                                  color: AppColors.neutral600,
+                                                  color:
+                                                      AppColors.chipBackground,
                                                   borderRadius:
                                                       BorderRadius.circular(16),
                                                 ),
@@ -219,17 +198,15 @@ class _ProfileScreenState extends State<ProfileScreen>
                                 children: [
                                   Expanded(
                                     child: OutlinedButton(
-                                      onPressed: () {
-                                        // Edit profile
-                                      },
+                                      onPressed: () =>
+                                          context.push('/edit-profile'),
                                       style: OutlinedButton.styleFrom(
-                                        side: BorderSide(
+                                        side: const BorderSide(
                                           color: AppColors.neutral400,
                                         ),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
                                         ),
                                       ),
                                       child: const Text(
@@ -244,17 +221,14 @@ class _ProfileScreenState extends State<ProfileScreen>
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: OutlinedButton(
-                                      onPressed: () {
-                                        // Share profile
-                                      },
+                                      onPressed: () {},
                                       style: OutlinedButton.styleFrom(
-                                        side: BorderSide(
+                                        side: const BorderSide(
                                           color: AppColors.neutral400,
                                         ),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
                                         ),
                                       ),
                                       child: const Text(
@@ -271,15 +245,17 @@ class _ProfileScreenState extends State<ProfileScreen>
                             ],
                           ),
                         ),
-
-                        // Tab Bar
                         TabBar(
                           controller: _tabController,
                           indicatorColor: AppColors.accent,
                           labelColor: AppColors.accent,
                           unselectedLabelColor: AppColors.neutral400,
                           tabs: const [
-                            Tab(icon: Icon(Icons.grid_on)),
+                            Tab(
+                              icon: Icon(
+                                Icons.grid_on,
+                              ),
+                            ),
                             Tab(
                               icon: Icon(
                                 Icons.play_arrow_outlined,
@@ -287,12 +263,12 @@ class _ProfileScreenState extends State<ProfileScreen>
                             ),
                             Tab(
                               icon: Icon(
-                                Icons.person_pin_outlined,
+                                Icons.bookmark_border,
                               ),
                             ),
                             Tab(
                               icon: Icon(
-                                Icons.bookmark_border,
+                                Icons.favorite_border,
                               ),
                             ),
                           ],
@@ -309,10 +285,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                   _buildPostsGrid(_userPosts),
                   // Reels Grid
                   _buildReelsGrid(_userReels),
-                  // Tagged Grid
-                  _buildTaggedGrid(_taggedPosts),
                   // Reposts Grid
                   _buildRepostsGrid(_repostedPosts),
+                  // Tagged Grid
+                  _buildTaggedGrid(_taggedPosts),
                 ],
               ),
             );
@@ -322,6 +298,44 @@ class _ProfileScreenState extends State<ProfileScreen>
             child: Text('Please log in to view your profile'),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildCustomAppBar(String username) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      color: AppColors.background,
+      child: SafeArea(
+        bottom: false,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Username
+            Text(
+              username,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                color: AppColors.onSurface,
+              ),
+            ),
+            // Actions
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.notifications_outlined,
+                      color: AppColors.onSurface),
+                  onPressed: () => context.push('/notifications'),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.menu, color: AppColors.onSurface),
+                  onPressed: () => _showProfileMenu(context),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -338,7 +352,8 @@ class _ProfileScreenState extends State<ProfileScreen>
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
-          Text(label, style: TextStyle(fontSize: 14, color: AppColors.neutral200)),
+          Text(label,
+              style: TextStyle(fontSize: 14, color: AppColors.textTertiary)),
         ],
       ),
     );
@@ -350,7 +365,8 @@ class _ProfileScreenState extends State<ProfileScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.camera_alt_outlined, size: 60, color: AppColors.neutral400),
+            Icon(Icons.camera_alt_outlined,
+                size: 60, color: AppColors.neutral400),
             SizedBox(height: 16),
             Text(
               'No Posts Yet',
@@ -359,7 +375,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             SizedBox(height: 8),
             Text(
               'When you share photos, they will appear on your profile.',
-              style: TextStyle(color: AppColors.neutral200),
+              style: TextStyle(color: AppColors.textTertiary),
               textAlign: TextAlign.center,
             ),
           ],
@@ -380,23 +396,21 @@ class _ProfileScreenState extends State<ProfileScreen>
         final imageUrl = imageUrls.isNotEmpty ? imageUrls[0] : '';
 
         return GestureDetector(
-          onTap: () {
-            // Navigate to post detail
-          },
+          onTap: () => context.push('/post/${post['id']}'),
           child: Container(
-            color: AppColors.neutral600,
+            color: AppColors.imagePlaceholder,
             child: imageUrl.isNotEmpty
                 ? CachedNetworkImage(
                     imageUrl: imageUrl,
                     fit: BoxFit.cover,
                     placeholder: (context, url) => Container(
-                      color: AppColors.neutral600,
+                      color: AppColors.imagePlaceholder,
                       child: const Center(
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                     ),
                     errorWidget: (context, url, error) => Container(
-                      color: AppColors.neutral600,
+                      color: AppColors.imagePlaceholder,
                       child: const Icon(
                         Icons.image_not_supported,
                         color: AppColors.neutral500,
@@ -404,7 +418,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     ),
                   )
                 : Container(
-                    color: AppColors.neutral200,
+                    color: AppColors.imagePlaceholder,
                     child: const Icon(Icons.image, color: AppColors.neutral500),
                   ),
           ),
@@ -419,7 +433,8 @@ class _ProfileScreenState extends State<ProfileScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.play_circle_outline, size: 60, color: AppColors.neutral400),
+            Icon(Icons.play_circle_outline,
+                size: 60, color: AppColors.neutral400),
             SizedBox(height: 16),
             Text(
               'No Reels Yet',
@@ -457,9 +472,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                         imageUrl: imageUrl,
                         fit: BoxFit.cover,
                         placeholder: (context, url) =>
-                            Container(color: AppColors.neutral200),
+                            Container(color: AppColors.imagePlaceholder),
                         errorWidget: (context, url, error) => Container(
-                          color: AppColors.neutral600,
+                          color: AppColors.imagePlaceholder,
                           child: const Icon(
                             Icons.video_library,
                             color: AppColors.neutral500,
@@ -478,7 +493,8 @@ class _ProfileScreenState extends State<ProfileScreen>
               const Positioned(
                 bottom: 8,
                 left: 8,
-                child: Icon(Icons.play_arrow, color: AppColors.onAccent, size: 20),
+                child:
+                    Icon(Icons.play_arrow, color: AppColors.onAccent, size: 20),
               ),
             ],
           ),
@@ -493,7 +509,8 @@ class _ProfileScreenState extends State<ProfileScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.person_pin_outlined, size: 60, color: AppColors.neutral400),
+            Icon(Icons.person_pin_outlined,
+                size: 60, color: AppColors.neutral400),
             SizedBox(height: 16),
             Text(
               'Photos of you',
@@ -502,7 +519,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             SizedBox(height: 8),
             Text(
               'When people tag you in photos, they\'ll appear here.',
-              style: TextStyle(color: AppColors.neutral200),
+              style: TextStyle(color: AppColors.textTertiary),
               textAlign: TextAlign.center,
             ),
           ],
@@ -533,7 +550,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     imageUrl: imageUrl,
                     fit: BoxFit.cover,
                     placeholder: (context, url) =>
-                        Container(color: AppColors.neutral200),
+                        Container(color: AppColors.imagePlaceholder),
                     errorWidget: (context, url, error) => Container(
                       color: AppColors.neutral600,
                       child: const Icon(
@@ -543,7 +560,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     ),
                   )
                 : Container(
-                    color: AppColors.neutral200,
+                    color: AppColors.imagePlaceholder,
                     child: const Icon(Icons.image, color: AppColors.neutral500),
                   ),
           ),
@@ -567,7 +584,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             SizedBox(height: 8),
             Text(
               'Save photos and videos that you want to see again.',
-              style: TextStyle(color: AppColors.neutral200),
+              style: TextStyle(color: AppColors.textTertiary),
               textAlign: TextAlign.center,
             ),
           ],
@@ -598,7 +615,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     imageUrl: imageUrl,
                     fit: BoxFit.cover,
                     placeholder: (context, url) =>
-                        Container(color: AppColors.neutral200),
+                        Container(color: AppColors.imagePlaceholder),
                     errorWidget: (context, url, error) => Container(
                       color: AppColors.neutral600,
                       child: const Icon(
@@ -608,7 +625,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     ),
                   )
                 : Container(
-                    color: AppColors.neutral200,
+                    color: AppColors.imagePlaceholder,
                     child: const Icon(Icons.image, color: AppColors.neutral500),
                   ),
           ),
@@ -633,7 +650,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 height: 4,
                 margin: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                  color: AppColors.neutral600,
+                  color: AppColors.neutral300,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -642,7 +659,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 title: const Text('Settings'),
                 onTap: () {
                   Navigator.pop(context);
-                  // Navigate to settings
+                  context.push('/settings');
                 },
               ),
               ListTile(
@@ -650,7 +667,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                 title: const Text('Saved'),
                 onTap: () {
                   Navigator.pop(context);
-                  // Navigate to saved posts
                 },
               ),
               ListTile(
@@ -658,7 +674,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 title: const Text('Your activity'),
                 onTap: () {
                   Navigator.pop(context);
-                  // Navigate to activity
+                  context.push('/notifications');
                 },
               ),
               ListTile(

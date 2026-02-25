@@ -1,4 +1,4 @@
-name: yours_bird
+name: blackclap
 description: "A social media mobile app inspired by Instagram with AI features"
 publish_to: 'none'
 
@@ -32,6 +32,10 @@ dependencies:
   # Navigation
   go_router: ^14.6.1
   persistent_bottom_nav_bar: ^6.2.1
+
+  # Fonts
+  google_fonts: ^6.2.1
+
   
   
   # HTTP requests
@@ -63,6 +67,7 @@ dependencies:
   firebase_auth: ^6.1.0
 
 dev_dependencies:
+  flutter_launcher_icons: ^0.13.1
   flutter_test:
     sdk: flutter
 
@@ -73,6 +78,10 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
 
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"  # your icon path
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 

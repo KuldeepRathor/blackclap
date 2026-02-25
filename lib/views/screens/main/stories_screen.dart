@@ -50,7 +50,7 @@ class StoriesScreen extends StatelessWidget {
               'This is the stories screen',
               style: TextStyle(
                 fontSize: 16,
-                color: AppColors.neutral200,
+                color: AppColors.textTertiary,
               ),
             ),
           ],

@@ -38,3 +38,12 @@ class PostsCreateRequested extends PostsEvent {
   @override
   List<Object?> get props => [uid, caption, imageUrls];
 }
+
+class PostsDeleteRequested extends PostsEvent {
+  final String postId;
+
+  const PostsDeleteRequested({required this.postId});
+
+  @override
+  List<Object?> get props => [postId];
+}
