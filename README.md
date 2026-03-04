@@ -21,7 +21,7 @@ A comprehensive social media mobile app built with Flutter, inspired by Instagra
 ## 🛠 Tech Stack
 
 - **Frontend**: Flutter with Dart
-- **State Management**: Riverpod
+- **State Management**: Bloc
 - **Backend**: Firebase (Firestore, Auth, Storage)
 - **Navigation**: GoRouter
 - **Image Handling**: Image Picker, Cached Network Image
