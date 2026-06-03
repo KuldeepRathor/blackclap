@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 import '../../../blocs/auth/auth_bloc.dart';
 import '../../../blocs/auth/auth_state.dart';
 import '../../../blocs/auth/auth_event.dart';
 import '../../../repositories/mock_data_service.dart';
+import '../../../repositories/user_repository.dart';
 import '../../../constants/color_constants.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -35,7 +37,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     super.dispose();
   }
 
-  void _loadUserContent() {
+  void _loadUserContent() async {
     final authState = context.read<AuthBloc>().state;
     if (authState is AuthAuthenticated) {
       setState(() {
@@ -57,6 +59,11 @@ class _ProfileScreenState extends State<ProfileScreen>
             .take(2)
             .toList();
       });
+
+      // Fetch the latest profile data from the backend
+      try {
+        await context.read<UserRepository>().getProfile();
+      } catch (_) {}
     }
   }
 
@@ -142,15 +149,15 @@ class _ProfileScreenState extends State<ProfileScreen>
                                   ),
                                   // Stats
                                   _buildStatColumn(
-                                    user.posts.length.toString(),
+                                    (user.postsCount ?? user.posts.length).toString(),
                                     'Posts',
                                   ),
                                   _buildStatColumn(
-                                    user.followers.length.toString(),
+                                    (user.followersCount ?? user.followers.length).toString(),
                                     'Followers',
                                   ),
                                   _buildStatColumn(
-                                    user.following.length.toString(),
+                                    (user.followingCount ?? user.following.length).toString(),
                                     'Following',
                                   ),
                                 ],
@@ -220,7 +227,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                                   Expanded(
                                     child: OutlinedButton(
                                       onPressed: () {
-                                        // Edit profile
+                                        context.push('/edit-profile');
                                       },
                                       style: OutlinedButton.styleFrom(
                                         side: BorderSide(
