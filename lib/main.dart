@@ -225,7 +225,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
       stateManagement: true,
       popBehaviorOnSelectedNavBarItemPress: PopBehavior.once,
       backgroundColor: AppColors.surface,
-      navBarStyle: NavBarStyle.style12,
+      navBarStyle: NavBarStyle.style3,
     );
   }
 }

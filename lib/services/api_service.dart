@@ -204,62 +204,61 @@ class ApiService {
     }
   }
 
-  // --- Media Image Upload Flow (2-Step Direct Upload) ---
+  // --- Upload Flow (2-Step Azure SAS Direct Upload) ---
 
+  /// Uploads a profile image and returns the public blob URL.
+  ///
+  /// Step 1 — POST /uploads/url  →  get a short-lived Azure SAS upload URL.
+  /// Step 2 — PUT <sas_url>      →  stream the file directly to Azure Blob Storage.
+  /// Step 3 — PATCH /users/me    →  persist the blob URL on the user profile.
   Future<String> uploadProfileImage(File file) async {
-    final fileName = file.path.split('/').last;
-    final fileExtension = fileName.split('.').last.toLowerCase();
-    
-    // Determine MIME type
-    String fileType = 'image/jpeg';
-    if (fileExtension == 'png') {
-      fileType = 'image/png';
-    } else if (fileExtension == 'gif') {
-      fileType = 'image/gif';
-    }
+    final fileName = file.path.split('/').last.toLowerCase();
 
-    // Step 1: Request presigned upload URL
-    final presignedUrl = Uri.parse(AppUrl.presignedUrl);
-    final presignedResponse = await _sendRequest(
+    // Step 1: Request SAS upload URL from the backend
+    final sasRequestResponse = await _sendRequest(
       'POST',
-      presignedUrl,
+      Uri.parse(AppUrl.uploadUrl),
       requireAuth: true,
       body: json.encode({
-        'file_name': fileName,
-        'file_type': fileType,
-        'purpose': 'avatar',
+        'filename': fileName,
+        'upload_type': 'profile_image',
       }),
     );
 
-    if (presignedResponse.statusCode != 200) {
-      throw Exception('Failed to get upload authorization: ${_parseError(presignedResponse)}');
+    if (sasRequestResponse.statusCode != 200) {
+      throw Exception(
+        'Failed to get upload URL: ${_parseError(sasRequestResponse)}',
+      );
     }
 
-    final presignedData = json.decode(presignedResponse.body) as Map<String, dynamic>;
-    final uploadUrl = presignedData['upload_url'] as String;
-    final downloadUrl = presignedData['download_url'] as String;
+    final sasData =
+        json.decode(sasRequestResponse.body) as Map<String, dynamic>;
+    final uploadUrl = sasData['upload_url'] as String;
+    final blobUrl = sasData['blob_url'] as String;
+    final contentType = sasData['content_type'] as String;
 
-    // Step 2: Upload file binary directly
+    // Step 2: PUT file binary directly to Azure Blob Storage via SAS URL.
+    // x-ms-blob-type is required by Azure for block blob uploads.
     final fileBytes = await file.readAsBytes();
-    final uploadResponse = await _sendRequest(
-      'PUT',
+    final azureUploadResponse = await http.put(
       Uri.parse(uploadUrl),
-      requireAuth: false,
       headers: {
-        'Content-Type': fileType,
+        'Content-Type': contentType,
+        'x-ms-blob-type': 'BlockBlob',
       },
       body: fileBytes,
     );
 
-    if (uploadResponse.statusCode != 200 && uploadResponse.statusCode != 201) {
-      throw Exception('Failed to upload image data.');
+    if (azureUploadResponse.statusCode != 200 &&
+        azureUploadResponse.statusCode != 201) {
+      throw Exception(
+        'Failed to upload file to storage (${azureUploadResponse.statusCode}).',
+      );
     }
 
-    // Step 3: Link the uploaded image to the user's profile
-    await updateMe({
-      'avatar_url': downloadUrl,
-    });
+    // Step 3: Persist the blob URL on the user profile
+    await updateMe({'avatar_url': blobUrl});
 
-    return downloadUrl;
+    return blobUrl;
   }
 }
