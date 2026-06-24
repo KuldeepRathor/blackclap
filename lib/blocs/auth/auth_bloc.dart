@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../models/user_model.dart';
 import '../../repositories/user_repository.dart';
+import '../../services/token_storage.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
@@ -11,7 +12,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   AuthBloc({required UserRepository userRepository})
       : _userRepository = userRepository,
-        super(AuthUnauthenticated()) {
+        super(AuthInitial()) {
     on<AuthLoginRequested>(_onLoginRequested);
     on<AuthSignupRequested>(_onSignupRequested);
     on<AuthLogoutRequested>(_onLogoutRequested);
@@ -40,7 +41,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(const AuthError(message: 'Failed to sign in'));
       }
     } catch (e) {
-      emit(AuthError(message: e.toString()));
+      emit(AuthError(message: e.toString().replaceAll('Exception: ', '')));
     }
   }
 
@@ -63,7 +64,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(const AuthError(message: 'Failed to create account'));
       }
     } catch (e) {
-      emit(AuthError(message: e.toString()));
+      emit(AuthError(message: e.toString().replaceAll('Exception: ', '')));
     }
   }
 
@@ -75,7 +76,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       await _userRepository.signOut();
       emit(AuthUnauthenticated());
     } catch (e) {
-      emit(AuthError(message: e.toString()));
+      emit(AuthError(message: e.toString().replaceAll('Exception: ', '')));
     }
   }
 
@@ -83,13 +84,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthCheckRequested event,
     Emitter<AuthState> emit,
   ) async {
+    emit(AuthLoading());
     try {
-      final user = _userRepository.getCurrentUser();
-      if (user != null) {
-        emit(AuthAuthenticated(user: user));
-      } else {
-        emit(AuthUnauthenticated());
+      final token = await TokenStorage.getAccessToken();
+      if (token != null) {
+        final user = await _userRepository.getProfile();
+        if (user != null) {
+          emit(AuthAuthenticated(user: user));
+          return;
+        }
       }
+      emit(AuthUnauthenticated());
     } catch (e) {
       emit(AuthUnauthenticated());
     }

@@ -10,6 +10,7 @@ import 'views/screens/main/profile_screen.dart';
 import 'views/screens/main/create_post_screen.dart';
 import 'views/screens/main/stories_screen.dart';
 import 'views/screens/main/reels_screen.dart';
+import 'views/screens/main/edit_profile_screen.dart';
 import 'blocs/auth/auth_bloc.dart';
 import 'blocs/auth/auth_event.dart';
 import 'blocs/auth/auth_state.dart';
@@ -17,12 +18,13 @@ import 'blocs/posts/posts_bloc.dart';
 import 'repositories/user_repository.dart';
 import 'repositories/post_repository.dart';
 import 'constants/color_constants.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
+// import 'package:firebase_core/firebase_core.dart';
+// import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Skip Firebase initialization as per request to run only custom backend auth APIs
+  // await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   runApp(const BlackClapApp());
 }
@@ -140,6 +142,10 @@ class BlackClapApp extends StatelessWidget {
           path: '/reels',
           builder: (context, state) => const ReelsScreen(),
         ),
+        GoRoute(
+          path: '/edit-profile',
+          builder: (context, state) => const EditProfileScreen(),
+        ),
       ],
     );
   }
@@ -219,7 +225,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
       stateManagement: true,
       popBehaviorOnSelectedNavBarItemPress: PopBehavior.once,
       backgroundColor: AppColors.surface,
-      navBarStyle: NavBarStyle.style12,
+      navBarStyle: NavBarStyle.style3,
     );
   }
 }

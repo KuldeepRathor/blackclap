@@ -1,5 +1,8 @@
+import 'dart:async';
+import 'dart:io';
 import '../models/user_model.dart';
-import '../services/firebase_auth_service.dart';
+import '../services/api_service.dart';
+import '../services/token_storage.dart';
 import 'mock_data_service.dart';
 
 abstract class UserRepositoryInterface {
@@ -18,10 +21,23 @@ abstract class UserRepositoryInterface {
   Future<void> signOut();
   UserModel? getCurrentUser();
   Stream<UserModel?> get authStateChanges;
+  
+  // Custom API additions
+  Future<UserModel?> getProfile();
+  Future<UserModel?> updateProfile({
+    String? displayName,
+    String? username,
+    String? bio,
+    String? email,
+    String? avatarUrl,
+  });
+  Future<String> uploadAvatar(String filePath);
 }
 
 class UserRepository implements UserRepositoryInterface {
-  final FirebaseAuthService _authService = FirebaseAuthService();
+  final ApiService _apiService = ApiService();
+  final StreamController<UserModel?> _authStateController = StreamController<UserModel?>.broadcast();
+  UserModel? _cachedUser;
 
   @override
   Future<List<UserModel>> getUsers() async {
@@ -53,10 +69,18 @@ class UserRepository implements UserRepositoryInterface {
 
   @override
   Future<UserModel?> signInWithEmailAndPassword(String email, String password) async {
-    return await _authService.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+    try {
+      final userMap = await _apiService.login(
+        emailOrUsername: email,
+        password: password,
+      );
+      final user = UserModel.fromMap(userMap);
+      _cachedUser = user;
+      _authStateController.add(user);
+      return user;
+    } catch (e) {
+      rethrow;
+    }
   }
 
   @override
@@ -66,59 +90,105 @@ class UserRepository implements UserRepositoryInterface {
     required String username,
     required String fullName,
   }) async {
-    return await _authService.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-      username: username,
-      fullName: fullName,
-    );
+    try {
+      final userMap = await _apiService.register(
+        email: email,
+        username: username,
+        password: password,
+      );
+
+      var user = UserModel.fromMap(userMap);
+
+      if (fullName.isNotEmpty && fullName != username) {
+        final updatedUserMap = await _apiService.updateMe({
+          'display_name': fullName,
+        });
+        user = UserModel.fromMap(updatedUserMap);
+      }
+
+      _cachedUser = user;
+      _authStateController.add(user);
+      return user;
+    } catch (e) {
+      rethrow;
+    }
   }
 
   @override
   Future<void> signOut() async {
-    await _authService.signOut();
+    await TokenStorage.clearTokens();
+    _cachedUser = null;
+    _authStateController.add(null);
   }
 
   @override
   UserModel? getCurrentUser() {
-    final firebaseUser = _authService.currentUser;
-    if (firebaseUser == null) return null;
-
-    return UserModel(
-      uid: firebaseUser.uid,
-      username: firebaseUser.displayName ?? 'user_${firebaseUser.uid.substring(0, 8)}',
-      fullName: firebaseUser.displayName ?? 'User',
-      email: firebaseUser.email ?? '',
-      bio: '',
-      profileImageUrl: firebaseUser.photoURL ?? '',
-      followers: [],
-      following: [],
-      posts: [],
-      interests: [],
-      isVerified: false,
-      createdAt: firebaseUser.metadata.creationTime ?? DateTime.now(),
-    );
+    return _cachedUser;
   }
 
   @override
-  Stream<UserModel?> get authStateChanges {
-    return _authService.authStateChanges.map((firebaseUser) {
-      if (firebaseUser == null) return null;
+  Stream<UserModel?> get authStateChanges => _authStateController.stream;
 
-      return UserModel(
-        uid: firebaseUser.uid,
-        username: firebaseUser.displayName ?? 'user_${firebaseUser.uid.substring(0, 8)}',
-        fullName: firebaseUser.displayName ?? 'User',
-        email: firebaseUser.email ?? '',
-        bio: '',
-        profileImageUrl: firebaseUser.photoURL ?? '',
-        followers: [],
-        following: [],
-        posts: [],
-        interests: [],
-        isVerified: false,
-        createdAt: firebaseUser.metadata.creationTime ?? DateTime.now(),
-      );
-    });
+  // Custom API endpoints
+
+  @override
+  Future<UserModel?> getProfile() async {
+    try {
+      final userMap = await _apiService.getMe();
+      final user = UserModel.fromMap(userMap);
+      _cachedUser = user;
+      _authStateController.add(user);
+      return user;
+    } catch (e) {
+      // If profile fetching fails (e.g. token expired), sign out
+      await signOut();
+      rethrow;
+    }
+  }
+
+  @override
+  Future<UserModel?> updateProfile({
+    String? displayName,
+    String? username,
+    String? bio,
+    String? email,
+    String? avatarUrl,
+  }) async {
+    try {
+      final fields = <String, dynamic>{};
+      if (displayName != null) fields['display_name'] = displayName;
+      if (username != null) fields['username'] = username;
+      if (bio != null) fields['bio'] = bio;
+      if (email != null) fields['email'] = email;
+      if (avatarUrl != null) fields['avatar_url'] = avatarUrl;
+
+      if (fields.isEmpty) return _cachedUser;
+
+      final updatedUserMap = await _apiService.updateMe(fields);
+      final user = UserModel.fromMap(updatedUserMap);
+      _cachedUser = user;
+      _authStateController.add(user);
+      return user;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  @override
+  Future<String> uploadAvatar(String filePath) async {
+    try {
+      final file = File(filePath);
+      final downloadUrl = await _apiService.uploadProfileImage(file);
+      
+      // Update cached user avatar url locally as well
+      if (_cachedUser != null) {
+        _cachedUser = _cachedUser!.copyWith(profileImageUrl: downloadUrl);
+        _authStateController.add(_cachedUser);
+      }
+      
+      return downloadUrl;
+    } catch (e) {
+      rethrow;
+    }
   }
 }

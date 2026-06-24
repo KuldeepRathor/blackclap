@@ -1,10 +1,13 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 import '../../../blocs/auth/auth_bloc.dart';
 import '../../../blocs/auth/auth_state.dart';
 import '../../../blocs/auth/auth_event.dart';
 import '../../../repositories/mock_data_service.dart';
+import '../../../repositories/user_repository.dart';
 import '../../../constants/color_constants.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -35,7 +38,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     super.dispose();
   }
 
-  void _loadUserContent() {
+  void _loadUserContent() async {
     final authState = context.read<AuthBloc>().state;
     if (authState is AuthAuthenticated) {
       setState(() {
@@ -57,6 +60,11 @@ class _ProfileScreenState extends State<ProfileScreen>
             .take(2)
             .toList();
       });
+
+      // Fetch the latest profile data from the backend
+      try {
+        await context.read<UserRepository>().getProfile();
+      } catch (_) {}
     }
   }
 
@@ -118,39 +126,46 @@ class _ProfileScreenState extends State<ProfileScreen>
                                     MainAxisAlignment.spaceEvenly,
                                 children: [
                                   // Profile Image
-                                  CircleAvatar(
-                                    radius: 40,
-                                    backgroundColor: AppColors.accent,
-                                    backgroundImage:
-                                        user.profileImageUrl.isNotEmpty
-                                        ? CachedNetworkImageProvider(
-                                            user.profileImageUrl,
-                                          )
-                                        : null,
-                                    child: user.profileImageUrl.isEmpty
-                                        ? Text(
-                                            user.fullName.isNotEmpty
-                                                ? user.fullName[0].toUpperCase()
-                                                : 'U',
-                                            style: const TextStyle(
-                                              fontSize: 36,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppColors.onAccent,
-                                            ),
-                                          )
-                                        : null,
+                                  GestureDetector(
+                                    onTap: () => _showProfileImageZoom(
+                                      context,
+                                      user.profileImageUrl,
+                                      user.fullName,
+                                    ),
+                                    child: CircleAvatar(
+                                      radius: 40,
+                                      backgroundColor: AppColors.accent,
+                                      backgroundImage:
+                                          user.profileImageUrl.isNotEmpty
+                                          ? CachedNetworkImageProvider(
+                                              user.profileImageUrl,
+                                            )
+                                          : null,
+                                      child: user.profileImageUrl.isEmpty
+                                          ? Text(
+                                              user.fullName.isNotEmpty
+                                                  ? user.fullName[0].toUpperCase()
+                                                  : 'U',
+                                              style: const TextStyle(
+                                                fontSize: 36,
+                                                fontWeight: FontWeight.bold,
+                                                color: AppColors.onAccent,
+                                              ),
+                                            )
+                                          : null,
+                                    ),
                                   ),
                                   // Stats
                                   _buildStatColumn(
-                                    user.posts.length.toString(),
+                                    (user.postsCount ?? user.posts.length).toString(),
                                     'Posts',
                                   ),
                                   _buildStatColumn(
-                                    user.followers.length.toString(),
+                                    (user.followersCount ?? user.followers.length).toString(),
                                     'Followers',
                                   ),
                                   _buildStatColumn(
-                                    user.following.length.toString(),
+                                    (user.followingCount ?? user.following.length).toString(),
                                     'Following',
                                   ),
                                 ],
@@ -220,7 +235,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                                   Expanded(
                                     child: OutlinedButton(
                                       onPressed: () {
-                                        // Edit profile
+                                        context.push('/edit-profile');
                                       },
                                       style: OutlinedButton.styleFrom(
                                         side: BorderSide(
@@ -611,6 +626,53 @@ class _ProfileScreenState extends State<ProfileScreen>
                     color: AppColors.neutral200,
                     child: const Icon(Icons.image, color: AppColors.neutral500),
                   ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showProfileImageZoom(
+    BuildContext context,
+    String imageUrl,
+    String fullName,
+  ) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.transparent,
+      builder: (context) {
+        return GestureDetector(
+          onTap: () => Navigator.of(context).pop(),
+          child: Stack(
+            children: [
+              BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: Container(color: Colors.black.withValues(alpha: 0.6)),
+              ),
+              Center(
+                child: imageUrl.isNotEmpty
+                    ? ClipOval(
+                        child: CachedNetworkImage(
+                          imageUrl: imageUrl,
+                          width: 260,
+                          height: 260,
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    : CircleAvatar(
+                        radius: 130,
+                        backgroundColor: AppColors.accent,
+                        child: Text(
+                          fullName.isNotEmpty ? fullName[0].toUpperCase() : 'U',
+                          style: const TextStyle(
+                            fontSize: 100,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.onAccent,
+                          ),
+                        ),
+                      ),
+              ),
+            ],
           ),
         );
       },
