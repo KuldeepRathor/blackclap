@@ -33,6 +33,40 @@ class PostModel extends Equatable {
     required this.location,
   });
 
+  /// Maps the response from POST /api/v1/posts (or feed endpoint) to PostModel.
+  factory PostModel.fromApiResponse(Map<String, dynamic> map) {
+    final media = (map['media'] as List? ?? []);
+    final imageUrls = media
+        .where((m) => m['media_type'] == 'image')
+        .map<String>((m) => m['media_url'] as String)
+        .toList();
+    final videoUrls = media
+        .where((m) => m['media_type'] == 'video')
+        .map<String>((m) => m['media_url'] as String)
+        .toList();
+    final mediaTypeStr = map['media_type'] as String? ?? 'text';
+
+    return PostModel(
+      id: map['id'] as String? ?? '',
+      uid: map['user_id'] as String? ?? '',
+      username: map['username'] as String? ?? '',
+      fullName: map['display_name'] as String? ?? '',
+      profileImageUrl: map['avatar_url'] as String? ?? '',
+      caption: map['caption'] as String? ?? '',
+      imageUrls: imageUrls,
+      videoUrls: videoUrls,
+      mediaType: MediaType.values.firstWhere(
+        (e) => e.name == mediaTypeStr,
+        orElse: () => MediaType.text,
+      ),
+      likes: const [],
+      comments: const [],
+      createdAt:
+          DateTime.tryParse(map['created_at'] as String? ?? '') ?? DateTime.now(),
+      location: map['location'] as String? ?? '',
+    );
+  }
+
   factory PostModel.fromMap(Map<String, dynamic> map) {
     return PostModel(
       id: map['id'] ?? '',

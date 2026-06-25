@@ -1,10 +1,18 @@
+import 'dart:io';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../../repositories/mock_data_service.dart';
+import '../../repositories/post_repository.dart';
 import 'posts_event.dart';
 import 'posts_state.dart';
 
 class PostsBloc extends Bloc<PostsEvent, PostsState> {
-  PostsBloc() : super(PostsInitial()) {
+  final PostRepository _postRepository;
+
+  PostsBloc({required PostRepository postRepository})
+      : _postRepository = postRepository,
+        super(PostsInitial()) {
     on<PostsLoadRequested>(_onLoadRequested);
     on<PostsRefreshRequested>(_onRefreshRequested);
     on<PostsLikeToggled>(_onLikeToggled);
@@ -67,15 +75,15 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
   ) async {
     emit(PostsCreateLoading());
     try {
-      await MockDataService.createPost(
-        uid: event.uid,
-        caption: event.caption,
-        imageUrls: event.imageUrls,
-      );
-      emit(PostsCreateSuccess());
+      final imageFiles = event.filePaths.map((p) => File(p)).toList();
 
-      final posts = MockDataService.getPosts();
-      emit(PostsLoaded(posts: posts));
+      await _postRepository.createPost(
+        imageFiles: imageFiles,
+        caption: event.caption,
+        location: event.location,
+      );
+
+      emit(PostsCreateSuccess());
     } catch (e) {
       emit(PostsCreateError(message: e.toString()));
     }

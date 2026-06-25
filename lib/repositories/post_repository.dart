@@ -1,4 +1,8 @@
+import 'dart:io';
+
 import '../models/post_model.dart';
+import '../services/api_service.dart';
+import '../services/post_api_service.dart';
 import 'mock_data_service.dart';
 
 abstract class PostRepositoryInterface {
@@ -7,14 +11,15 @@ abstract class PostRepositoryInterface {
   Future<PostModel?> getPost(String postId);
   Future<void> likePost(String postId, String userId);
   Future<void> unlikePost(String postId, String userId);
-  Future<void> createPost({
-    required String uid,
+  Future<PostModel> createPost({
+    required List<File> imageFiles,
     required String caption,
-    required List<String> imageUrls,
+    String? location,
   });
 }
 
 class PostRepository implements PostRepositoryInterface {
+  final PostApiService _postApiService = PostApiService(ApiService());
 
   @override
   Future<List<PostModel>> getPosts() async {
@@ -24,8 +29,8 @@ class PostRepository implements PostRepositoryInterface {
 
   @override
   Future<List<PostModel>> getUserPosts(String uid) async {
-    final postData = MockDataService.getUserPosts(uid);
-    return postData.map((post) => PostModel.fromMap(post)).toList();
+    final rawPosts = await _postApiService.getUserPosts();
+    return rawPosts.map((post) => PostModel.fromApiResponse(post)).toList();
   }
 
   @override
@@ -44,16 +49,26 @@ class PostRepository implements PostRepositoryInterface {
     await MockDataService.unlikePost(postId, userId);
   }
 
+  /// Uploads each image to Azure/local storage, then creates the post record.
+  /// Returns the created PostModel from the API response.
   @override
-  Future<void> createPost({
-    required String uid,
+  Future<PostModel> createPost({
+    required List<File> imageFiles,
     required String caption,
-    required List<String> imageUrls,
+    String? location,
   }) async {
-    await MockDataService.createPost(
-      uid: uid,
-      caption: caption,
-      imageUrls: imageUrls,
+    // Upload all images in parallel
+    final mediaUrls = await Future.wait(
+      imageFiles.map((file) => _postApiService.uploadImage(file)),
     );
+
+    final response = await _postApiService.createPost(
+      caption: caption,
+      location: location,
+      mediaType: imageFiles.isEmpty ? 'text' : 'image',
+      mediaUrls: mediaUrls,
+    );
+
+    return PostModel.fromApiResponse(response);
   }
 }
