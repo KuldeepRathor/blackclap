@@ -1,4 +1,4 @@
-# Your Bird - Social Media Mobile App
+# Blackclap - Social Media Mobile App
 
 A comprehensive social media mobile app built with Flutter, inspired by Instagram but with unique AI-powered features. The app includes user authentication, real-time messaging, post creation, stories, reels, and AI-powered content discovery.
 
