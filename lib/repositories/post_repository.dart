@@ -16,6 +16,12 @@ abstract class PostRepositoryInterface {
     required String caption,
     String? location,
   });
+  Future<PostModel> createVideoPost({
+    required File videoFile,
+    File? thumbnailFile,
+    required String caption,
+    String? location,
+  });
 }
 
 class PostRepository implements PostRepositoryInterface {
@@ -50,14 +56,12 @@ class PostRepository implements PostRepositoryInterface {
   }
 
   /// Uploads each image to Azure/local storage, then creates the post record.
-  /// Returns the created PostModel from the API response.
   @override
   Future<PostModel> createPost({
     required List<File> imageFiles,
     required String caption,
     String? location,
   }) async {
-    // Upload all images in parallel
     final mediaUrls = await Future.wait(
       imageFiles.map((file) => _postApiService.uploadImage(file)),
     );
@@ -67,6 +71,32 @@ class PostRepository implements PostRepositoryInterface {
       location: location,
       mediaType: imageFiles.isEmpty ? 'text' : 'image',
       mediaUrls: mediaUrls,
+    );
+
+    return PostModel.fromApiResponse(response);
+  }
+
+  /// Uploads video (and optional thumbnail), then creates the post record.
+  @override
+  Future<PostModel> createVideoPost({
+    required File videoFile,
+    File? thumbnailFile,
+    required String caption,
+    String? location,
+  }) async {
+    final videoUrl = await _postApiService.uploadVideo(videoFile);
+
+    String? thumbnailUrl;
+    if (thumbnailFile != null) {
+      thumbnailUrl = await _postApiService.uploadThumbnail(thumbnailFile);
+    }
+
+    final response = await _postApiService.createPost(
+      caption: caption,
+      location: location,
+      mediaType: 'video',
+      mediaUrls: [videoUrl],
+      thumbnailUrl: thumbnailUrl,
     );
 
     return PostModel.fromApiResponse(response);

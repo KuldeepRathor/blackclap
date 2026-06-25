@@ -433,7 +433,10 @@ class _ProfileScreenState extends State<ProfileScreen>
       itemCount: posts.length,
       itemBuilder: (context, index) {
         final post = posts[index];
-        final imageUrl = post.imageUrls.isNotEmpty ? post.imageUrls[0] : '';
+        final isVideo = post.mediaType == MediaType.video;
+        final thumbnailUrl = isVideo
+            ? (post.thumbnailUrls.isNotEmpty ? post.thumbnailUrls[0] : '')
+            : (post.imageUrls.isNotEmpty ? post.imageUrls[0] : '');
         final hasMultiple = post.imageUrls.length > 1;
 
         return GestureDetector(
@@ -449,9 +452,9 @@ class _ProfileScreenState extends State<ProfileScreen>
             children: [
               Container(
                 color: AppColors.neutral600,
-                child: imageUrl.isNotEmpty
+                child: thumbnailUrl.isNotEmpty
                     ? CachedNetworkImage(
-                        imageUrl: imageUrl,
+                        imageUrl: thumbnailUrl,
                         fit: BoxFit.cover,
                         placeholder: (context, url) => Container(
                           color: AppColors.neutral600,
@@ -461,18 +464,28 @@ class _ProfileScreenState extends State<ProfileScreen>
                         ),
                         errorWidget: (context, url, error) => Container(
                           color: AppColors.neutral600,
-                          child: const Icon(
-                            Icons.image_not_supported,
+                          child: Icon(
+                            isVideo ? Icons.videocam_off : Icons.image_not_supported,
                             color: AppColors.neutral500,
                           ),
                         ),
                       )
                     : Container(
-                        color: AppColors.neutral200,
-                        child: const Icon(Icons.image, color: AppColors.neutral500),
+                        color: AppColors.neutral800,
+                        child: Icon(
+                          isVideo ? Icons.play_circle_outline : Icons.image,
+                          color: AppColors.neutral500,
+                          size: 32,
+                        ),
                       ),
               ),
-              if (hasMultiple)
+              if (isVideo)
+                const Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Icon(Icons.play_arrow, color: Colors.white, size: 18),
+                ),
+              if (!isVideo && hasMultiple)
                 const Positioned(
                   top: 6,
                   right: 6,

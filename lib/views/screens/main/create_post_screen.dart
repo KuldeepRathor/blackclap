@@ -1,11 +1,18 @@
 import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:video_thumbnail/video_thumbnail.dart';
+
 import '../../../blocs/posts/posts_bloc.dart';
 import '../../../blocs/posts/posts_event.dart';
 import '../../../blocs/posts/posts_state.dart';
 import '../../../constants/color_constants.dart';
+
+enum _PostMode { image, video }
 
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
@@ -19,7 +26,16 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   final TextEditingController _locationController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
+  _PostMode _mode = _PostMode.image;
+
+  // Image mode
   List<XFile> _selectedImages = [];
+
+  // Video mode
+  XFile? _selectedVideo;
+  Uint8List? _videoThumbnail;
+  File? _thumbnailFile;
+  bool _generatingThumbnail = false;
 
   @override
   void dispose() {
@@ -28,18 +44,30 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     super.dispose();
   }
 
-  // ── Media picking ───────────────────────────────────────────────────────────
+  // ── Mode ────────────────────────────────────────────────────────────────────
+
+  void _switchMode(_PostMode mode) {
+    if (_mode == mode) return;
+    setState(() {
+      _mode = mode;
+      _selectedImages = [];
+      _selectedVideo = null;
+      _videoThumbnail = null;
+      _thumbnailFile = null;
+      _generatingThumbnail = false;
+    });
+  }
+
+  // ── Image picking ────────────────────────────────────────────────────────────
 
   Future<void> _pickImages() async {
     try {
       final images = await _picker.pickMultiImage(imageQuality: 80);
       if (images.isEmpty) return;
-
       if (images.length > 5) {
         _showError('You can select a maximum of 5 images.');
         return;
       }
-
       setState(() => _selectedImages = images);
     } catch (e) {
       _showError('Error picking images: $e');
@@ -51,12 +79,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       final photo =
           await _picker.pickImage(source: ImageSource.camera, imageQuality: 80);
       if (photo == null) return;
-
       if (_selectedImages.length >= 5) {
         _showError('You can select a maximum of 5 images.');
         return;
       }
-
       setState(() => _selectedImages = [..._selectedImages, photo]);
     } catch (e) {
       _showError('Error capturing photo: $e');
@@ -66,6 +92,84 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   void _removeImage(int index) {
     setState(() => _selectedImages = List.from(_selectedImages)..removeAt(index));
   }
+
+  // ── Video picking ────────────────────────────────────────────────────────────
+
+  Future<void> _pickVideo() async {
+    try {
+      final video = await _picker.pickVideo(
+        source: ImageSource.gallery,
+        maxDuration: const Duration(minutes: 5),
+      );
+      if (video == null) return;
+      await _setVideo(video);
+    } catch (e) {
+      _showError('Error picking video: $e');
+    }
+  }
+
+  Future<void> _recordVideo() async {
+    try {
+      final video = await _picker.pickVideo(
+        source: ImageSource.camera,
+        maxDuration: const Duration(minutes: 5),
+      );
+      if (video == null) return;
+      await _setVideo(video);
+    } catch (e) {
+      _showError('Error recording video: $e');
+    }
+  }
+
+  Future<void> _setVideo(XFile video) async {
+    setState(() {
+      _selectedVideo = video;
+      _videoThumbnail = null;
+      _thumbnailFile = null;
+      _generatingThumbnail = true;
+    });
+    await _generateThumbnail(video.path);
+  }
+
+  Future<void> _generateThumbnail(String videoPath) async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final thumbPath = await VideoThumbnail.thumbnailFile(
+        video: videoPath,
+        thumbnailPath: tempDir.path,
+        imageFormat: ImageFormat.JPEG,
+        quality: 75,
+      );
+      if (!mounted) return;
+      if (thumbPath != null) {
+        final thumbFile = File(thumbPath);
+        final thumbBytes = await thumbFile.readAsBytes();
+        setState(() {
+          _thumbnailFile = thumbFile;
+          _videoThumbnail = thumbBytes;
+          _generatingThumbnail = false;
+        });
+      } else {
+        setState(() => _generatingThumbnail = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _generatingThumbnail = false);
+        _showError('Could not generate thumbnail: $e');
+      }
+    }
+  }
+
+  void _removeVideo() {
+    setState(() {
+      _selectedVideo = null;
+      _videoThumbnail = null;
+      _thumbnailFile = null;
+      _generatingThumbnail = false;
+    });
+  }
+
+  // ── Media options sheet ──────────────────────────────────────────────────────
 
   void _showMediaOptions() {
     showModalBottomSheet(
@@ -79,56 +183,99 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           padding: const EdgeInsets.symmetric(vertical: 20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildMediaOption(
-                icon: Icons.photo_library,
-                title: 'Choose Images',
-                subtitle: 'Pick up to 5 from gallery',
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImages();
-                },
-              ),
-              _buildMediaOption(
-                icon: Icons.camera_alt,
-                title: 'Take Photo',
-                subtitle: 'Use camera',
-                onTap: () {
-                  Navigator.pop(context);
-                  _capturePhoto();
-                },
-              ),
-            ],
+            children: _mode == _PostMode.image
+                ? [
+                    _buildMediaOption(
+                      icon: Icons.photo_library,
+                      title: 'Choose Images',
+                      subtitle: 'Pick up to 5 from gallery',
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickImages();
+                      },
+                    ),
+                    _buildMediaOption(
+                      icon: Icons.camera_alt,
+                      title: 'Take Photo',
+                      subtitle: 'Use camera',
+                      onTap: () {
+                        Navigator.pop(context);
+                        _capturePhoto();
+                      },
+                    ),
+                  ]
+                : [
+                    _buildMediaOption(
+                      icon: Icons.video_library,
+                      title: 'Choose Video',
+                      subtitle: 'Pick from gallery',
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickVideo();
+                      },
+                    ),
+                    _buildMediaOption(
+                      icon: Icons.videocam,
+                      title: 'Record Video',
+                      subtitle: 'Use camera',
+                      onTap: () {
+                        Navigator.pop(context);
+                        _recordVideo();
+                      },
+                    ),
+                  ],
           ),
         ),
       ),
     );
   }
 
-  // ── Post submission ─────────────────────────────────────────────────────────
+  // ── Post submission ──────────────────────────────────────────────────────────
 
   void _submitPost() {
     final caption = _captionController.text.trim();
     final location = _locationController.text.trim();
 
-    if (caption.isEmpty && _selectedImages.isEmpty) {
-      _showError('Add a caption or select at least one image.');
-      return;
-    }
-
-    context.read<PostsBloc>().add(
-          PostsCreateRequested(
+    if (_mode == _PostMode.video) {
+      if (_selectedVideo == null) {
+        _showError('Please select a video.');
+        return;
+      }
+      if (_generatingThumbnail) {
+        _showError('Please wait, generating thumbnail…');
+        return;
+      }
+      context.read<PostsBloc>().add(PostsCreateRequested(
+            filePaths: [_selectedVideo!.path],
+            caption: caption,
+            location: location.isEmpty ? null : location,
+            mediaType: 'video',
+            thumbnailPath: _thumbnailFile?.path,
+          ));
+    } else {
+      if (caption.isEmpty && _selectedImages.isEmpty) {
+        _showError('Add a caption or select at least one image.');
+        return;
+      }
+      context.read<PostsBloc>().add(PostsCreateRequested(
             filePaths: _selectedImages.map((x) => x.path).toList(),
             caption: caption,
             location: location.isEmpty ? null : location,
-          ),
-        );
+            mediaType: _selectedImages.isEmpty ? 'text' : 'image',
+          ));
+    }
   }
 
   void _resetForm() {
     _captionController.clear();
     _locationController.clear();
-    setState(() => _selectedImages = []);
+    setState(() {
+      _selectedImages = [];
+      _selectedVideo = null;
+      _videoThumbnail = null;
+      _thumbnailFile = null;
+      _generatingThumbnail = false;
+    });
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -175,7 +322,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     );
   }
 
-  // ── Build ───────────────────────────────────────────────────────────────────
+  // ── Build ────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -247,9 +394,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     style: const TextStyle(
                         color: AppColors.onSurface, fontSize: 16),
                     decoration: InputDecoration(
-                      hintText: 'Write a caption...',
-                      hintStyle:
-                          const TextStyle(color: AppColors.neutral400),
+                      hintText: 'Write a caption…',
+                      hintStyle: const TextStyle(color: AppColors.neutral400),
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide:
@@ -260,8 +406,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                               const BorderSide(color: AppColors.neutral600)),
                       focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: AppColors.accent, width: 2)),
+                          borderSide: const BorderSide(
+                              color: AppColors.accent, width: 2)),
                       filled: true,
                       fillColor: AppColors.surface,
                     ),
@@ -277,8 +423,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     style: const TextStyle(color: AppColors.onSurface),
                     decoration: InputDecoration(
                       hintText: 'Add location',
-                      hintStyle:
-                          const TextStyle(color: AppColors.neutral400),
+                      hintStyle: const TextStyle(color: AppColors.neutral400),
                       prefixIcon: const Icon(Icons.location_on,
                           color: AppColors.accent),
                       border: OutlineInputBorder(
@@ -291,8 +436,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                               const BorderSide(color: AppColors.neutral600)),
                       focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: AppColors.accent, width: 2)),
+                          borderSide: const BorderSide(
+                              color: AppColors.accent, width: 2)),
                       filled: true,
                       fillColor: AppColors.surface,
                     ),
@@ -301,89 +446,212 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
                 const SizedBox(height: 20),
 
-                // Image count badge
-                if (_selectedImages.isNotEmpty)
+                // Mode toggle
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _ModeButton(
+                          label: 'Photos',
+                          icon: Icons.photo_library_outlined,
+                          isSelected: _mode == _PostMode.image,
+                          onTap: isLoading
+                              ? null
+                              : () => _switchMode(_PostMode.image),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _ModeButton(
+                          label: 'Video',
+                          icon: Icons.videocam_outlined,
+                          isSelected: _mode == _PostMode.video,
+                          onTap: isLoading
+                              ? null
+                              : () => _switchMode(_PostMode.video),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // ── Image mode ──────────────────────────────────────────────
+
+                if (_mode == _PostMode.image) ...[
+                  if (_selectedImages.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.image,
+                              color: AppColors.accent, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${_selectedImages.length} / 5 image${_selectedImages.length > 1 ? 's' : ''}',
+                            style: const TextStyle(
+                                color: AppColors.accent,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (_selectedImages.isNotEmpty)
+                    SizedBox(
+                      height: 300,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _selectedImages.length,
+                        itemBuilder: (context, index) {
+                          return Container(
+                            width: 250,
+                            margin: const EdgeInsets.only(right: 12),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              color: AppColors.surface,
+                            ),
+                            child: Stack(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Image.file(
+                                    File(_selectedImages[index].path),
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                  ),
+                                ),
+                                if (isLoading)
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.4),
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: const Center(
+                                      child: CircularProgressIndicator(
+                                          color: Colors.white),
+                                    ),
+                                  ),
+                                if (!isLoading)
+                                  Positioned(
+                                    top: 8,
+                                    right: 8,
+                                    child: GestureDetector(
+                                      onTap: () => _removeImage(index),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: const BoxDecoration(
+                                          color: AppColors.error,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.close,
+                                            color: Colors.white, size: 18),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+
+                // ── Video mode ──────────────────────────────────────────────
+
+                if (_mode == _PostMode.video && _selectedVideo != null)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
+                    child: Stack(
                       children: [
-                        const Icon(Icons.image, color: AppColors.accent, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${_selectedImages.length} / 5 image${_selectedImages.length > 1 ? 's' : ''}',
-                          style: const TextStyle(
-                              color: AppColors.accent,
-                              fontWeight: FontWeight.w600),
+                        Container(
+                          height: 300,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: _generatingThumbnail
+                                ? const Center(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        CircularProgressIndicator(
+                                            color: AppColors.accent),
+                                        SizedBox(height: 12),
+                                        Text('Generating preview…',
+                                            style: TextStyle(
+                                                color: AppColors.neutral400,
+                                                fontSize: 13)),
+                                      ],
+                                    ),
+                                  )
+                                : _videoThumbnail != null
+                                    ? Stack(
+                                        fit: StackFit.expand,
+                                        children: [
+                                          Image.memory(_videoThumbnail!,
+                                              fit: BoxFit.cover),
+                                          Container(
+                                            color: Colors.black38,
+                                            child: const Center(
+                                              child: Icon(
+                                                Icons.play_circle_outline,
+                                                color: Colors.white,
+                                                size: 72,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    : const Center(
+                                        child: Icon(Icons.videocam,
+                                            color: AppColors.neutral400,
+                                            size: 64),
+                                      ),
+                          ),
                         ),
+                        if (isLoading)
+                          Positioned.fill(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.4),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                    color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        if (!isLoading && !_generatingThumbnail)
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: GestureDetector(
+                              onTap: _removeVideo,
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: const BoxDecoration(
+                                  color: AppColors.error,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.close,
+                                    color: Colors.white, size: 18),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
 
-                // Image previews
-                if (_selectedImages.isNotEmpty)
-                  SizedBox(
-                    height: 300,
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _selectedImages.length,
-                      itemBuilder: (context, index) {
-                        return Container(
-                          width: 250,
-                          margin: const EdgeInsets.only(right: 12),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            color: AppColors.surface,
-                          ),
-                          child: Stack(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(16),
-                                child: Image.file(
-                                  File(_selectedImages[index].path),
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                  height: double.infinity,
-                                ),
-                              ),
-                              // Upload overlay while loading
-                              if (isLoading)
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.4),
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: const Center(
-                                    child: CircularProgressIndicator(
-                                        color: Colors.white),
-                                  ),
-                                ),
-                              // Remove button
-                              if (!isLoading)
-                                Positioned(
-                                  top: 8,
-                                  right: 8,
-                                  child: GestureDetector(
-                                    onTap: () => _removeImage(index),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: const BoxDecoration(
-                                        color: AppColors.error,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(Icons.close,
-                                          color: Colors.white, size: 18),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
+                // ── Add / change media button ────────────────────────────────
 
-                // Add/change media button
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: InkWell(
@@ -403,9 +671,13 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            _selectedImages.isEmpty
-                                ? Icons.add_photo_alternate
-                                : Icons.edit,
+                            _mode == _PostMode.image
+                                ? (_selectedImages.isEmpty
+                                    ? Icons.add_photo_alternate
+                                    : Icons.edit)
+                                : (_selectedVideo == null
+                                    ? Icons.video_call
+                                    : Icons.edit),
                             color: isLoading
                                 ? AppColors.neutral400
                                 : AppColors.accent,
@@ -413,9 +685,13 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                           ),
                           const SizedBox(width: 12),
                           Text(
-                            _selectedImages.isEmpty
-                                ? 'Add Photos'
-                                : 'Change Photos',
+                            _mode == _PostMode.image
+                                ? (_selectedImages.isEmpty
+                                    ? 'Add Photos'
+                                    : 'Change Photos')
+                                : (_selectedVideo == null
+                                    ? 'Add Video'
+                                    : 'Change Video'),
                             style: TextStyle(
                               color: isLoading
                                   ? AppColors.neutral400
@@ -433,7 +709,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
-                    'You can add up to 5 images per post',
+                    _mode == _PostMode.image
+                        ? 'You can add up to 5 images per post'
+                        : 'One video per post · Max 5 minutes',
                     style: const TextStyle(
                         color: AppColors.neutral400, fontSize: 12),
                     textAlign: TextAlign.center,
@@ -446,6 +724,61 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+class _ModeButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback? onTap;
+
+  const _ModeButton({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.accent
+              : AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.accent
+                : AppColors.neutral600,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isSelected ? Colors.white : AppColors.neutral400,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : AppColors.neutral400,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

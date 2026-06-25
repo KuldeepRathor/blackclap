@@ -45,6 +45,48 @@ class PostApiService {
     return downloadUrl;
   }
 
+  /// Upload a video file. Returns the final download URL.
+  Future<String> uploadVideo(File file) async {
+    final fileName = file.path.split('/').last;
+    final ext = fileName.split('.').last.toLowerCase();
+    final contentType = switch (ext) {
+      'mov' => 'video/quicktime',
+      'webm' => 'video/webm',
+      _ => 'video/mp4',
+    };
+
+    final (:uploadUrl, :downloadUrl) = await _getPresignedUrl(
+      fileName: fileName,
+      fileType: contentType,
+    );
+
+    final bytes = await file.readAsBytes();
+    await _api.putBytes(uploadUrl, bytes, contentType);
+
+    return downloadUrl;
+  }
+
+  /// Upload a thumbnail image (for video posts). Returns the final download URL.
+  Future<String> uploadThumbnail(File file) async {
+    final fileName = file.path.split('/').last;
+    final ext = fileName.split('.').last.toLowerCase();
+    final contentType = switch (ext) {
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      _ => 'image/jpeg',
+    };
+
+    final (:uploadUrl, :downloadUrl) = await _getPresignedUrl(
+      fileName: fileName,
+      fileType: contentType,
+    );
+
+    final bytes = await file.readAsBytes();
+    await _api.putBytes(uploadUrl, bytes, contentType);
+
+    return downloadUrl;
+  }
+
   /// Fetch all posts for the currently authenticated user.
   Future<List<Map<String, dynamic>>> getUserPosts() async {
     final list = await _api.getList('/posts/me');
@@ -57,12 +99,14 @@ class PostApiService {
     required String? location,
     required String mediaType,
     required List<String> mediaUrls,
+    String? thumbnailUrl,
   }) async {
     return await _api.post('/posts', {
       if (caption != null && caption.isNotEmpty) 'caption': caption,
       if (location != null && location.isNotEmpty) 'location': location,
       'media_type': mediaType,
       'media_urls': mediaUrls,
+      if (thumbnailUrl != null) 'thumbnail_url': thumbnailUrl,
     });
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:video_player/video_player.dart';
 import '../../../constants/color_constants.dart';
 import '../../../models/post_model.dart';
 
@@ -14,6 +15,52 @@ class PostDetailScreen extends StatefulWidget {
 
 class _PostDetailScreenState extends State<PostDetailScreen> {
   int _currentImageIndex = 0;
+  VideoPlayerController? _videoController;
+  bool _isPlaying = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.post.mediaType == MediaType.video &&
+        widget.post.videoUrls.isNotEmpty) {
+      _initVideo(widget.post.videoUrls[0]);
+    }
+  }
+
+  Future<void> _initVideo(String url) async {
+    final controller = VideoPlayerController.networkUrl(Uri.parse(url));
+    _videoController = controller;
+    try {
+      await controller.initialize();
+      await controller.setLooping(true);
+      if (mounted) {
+        setState(() {
+          _isPlaying = true;
+        });
+        controller.play();
+      }
+    } catch (e) {
+      debugPrint('Video init error: $e');
+    }
+  }
+
+  void _togglePlayPause() {
+    if (_videoController == null) return;
+    setState(() {
+      if (_isPlaying) {
+        _videoController!.pause();
+      } else {
+        _videoController!.play();
+      }
+      _isPlaying = !_isPlaying;
+    });
+  }
+
+  @override
+  void dispose() {
+    _videoController?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,8 +141,66 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               ),
             ),
 
+            // Video player
+            if (post.mediaType == MediaType.video) ...[
+              GestureDetector(
+                onTap: _togglePlayPause,
+                child: Container(
+                  width: double.infinity,
+                  height: MediaQuery.of(context).size.height * 0.6,
+                  color: Colors.black,
+                  child: _videoController != null && _videoController!.value.isInitialized
+                      ? Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            AspectRatio(
+                              aspectRatio: _videoController!.value.aspectRatio,
+                              child: VideoPlayer(_videoController!),
+                            ),
+                            AnimatedOpacity(
+                              opacity: _isPlaying ? 0.0 : 1.0,
+                              duration: const Duration(milliseconds: 200),
+                              child: Container(
+                                width: 64,
+                                height: 64,
+                                decoration: BoxDecoration(
+                                  color: Colors.black54,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.play_arrow,
+                                  color: Colors.white,
+                                  size: 40,
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              child: VideoProgressIndicator(
+                                _videoController!,
+                                allowScrubbing: true,
+                                colors: VideoProgressColors(
+                                  playedColor: AppColors.accent,
+                                  bufferedColor: AppColors.neutral400,
+                                  backgroundColor: AppColors.neutral600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : const Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.accent,
+                          ),
+                        ),
+                ),
+              ),
+            ],
+
             // Image carousel
-            if (images.isNotEmpty) ...[
+            if (post.mediaType != MediaType.video && images.isNotEmpty) ...[
               SizedBox(
                 height: MediaQuery.of(context).size.height * 0.72,
                 child: PageView.builder(

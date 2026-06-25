@@ -11,6 +11,7 @@ class PostModel extends Equatable {
   final String caption;
   final List<String> imageUrls;
   final List<String> videoUrls;
+  final List<String> thumbnailUrls;
   final MediaType mediaType;
   final List<String> likes;
   final List<CommentModel> comments;
@@ -26,6 +27,7 @@ class PostModel extends Equatable {
     required this.caption,
     required this.imageUrls,
     this.videoUrls = const [],
+    this.thumbnailUrls = const [],
     this.mediaType = MediaType.text,
     required this.likes,
     required this.comments,
@@ -44,6 +46,11 @@ class PostModel extends Equatable {
         .where((m) => m['media_type'] == 'video')
         .map<String>((m) => m['media_url'] as String)
         .toList();
+    final thumbnailUrls = media
+        .map((m) => m['thumbnail_url'] as String?)
+        .where((t) => t != null && t.isNotEmpty)
+        .cast<String>()
+        .toList();
     final mediaTypeStr = map['media_type'] as String? ?? 'text';
 
     return PostModel(
@@ -55,6 +62,7 @@ class PostModel extends Equatable {
       caption: map['caption'] as String? ?? '',
       imageUrls: imageUrls,
       videoUrls: videoUrls,
+      thumbnailUrls: thumbnailUrls,
       mediaType: MediaType.values.firstWhere(
         (e) => e.name == mediaTypeStr,
         orElse: () => MediaType.text,
@@ -77,6 +85,7 @@ class PostModel extends Equatable {
       caption: map['caption'] ?? '',
       imageUrls: List<String>.from(map['imageUrls'] ?? []),
       videoUrls: List<String>.from(map['videoUrls'] ?? []),
+      thumbnailUrls: List<String>.from(map['thumbnailUrls'] ?? []),
       mediaType: MediaType.values.firstWhere(
         (e) => e.toString() == 'MediaType.${map['mediaType']}',
         orElse: () => MediaType.text,
@@ -100,6 +109,7 @@ class PostModel extends Equatable {
       'caption': caption,
       'imageUrls': imageUrls,
       'videoUrls': videoUrls,
+      'thumbnailUrls': thumbnailUrls,
       'mediaType': mediaType.toString().split('.').last,
       'likes': likes,
       'comments': comments.map((comment) => comment.toMap()).toList(),
@@ -117,6 +127,7 @@ class PostModel extends Equatable {
     String? caption,
     List<String>? imageUrls,
     List<String>? videoUrls,
+    List<String>? thumbnailUrls,
     MediaType? mediaType,
     List<String>? likes,
     List<CommentModel>? comments,
@@ -132,6 +143,7 @@ class PostModel extends Equatable {
       caption: caption ?? this.caption,
       imageUrls: imageUrls ?? this.imageUrls,
       videoUrls: videoUrls ?? this.videoUrls,
+      thumbnailUrls: thumbnailUrls ?? this.thumbnailUrls,
       mediaType: mediaType ?? this.mediaType,
       likes: likes ?? this.likes,
       comments: comments ?? this.comments,
@@ -150,6 +162,7 @@ class PostModel extends Equatable {
         caption,
         imageUrls,
         videoUrls,
+        thumbnailUrls,
         mediaType,
         likes,
         comments,

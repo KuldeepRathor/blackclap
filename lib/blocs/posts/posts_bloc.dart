@@ -75,14 +75,20 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
   ) async {
     emit(PostsCreateLoading());
     try {
-      final imageFiles = event.filePaths.map((p) => File(p)).toList();
-
-      await _postRepository.createPost(
-        imageFiles: imageFiles,
-        caption: event.caption,
-        location: event.location,
-      );
-
+      if (event.mediaType == 'video') {
+        await _postRepository.createVideoPost(
+          videoFile: File(event.filePaths.first),
+          thumbnailFile: event.thumbnailPath != null ? File(event.thumbnailPath!) : null,
+          caption: event.caption,
+          location: event.location,
+        );
+      } else {
+        await _postRepository.createPost(
+          imageFiles: event.filePaths.map((p) => File(p)).toList(),
+          caption: event.caption,
+          location: event.location,
+        );
+      }
       emit(PostsCreateSuccess());
     } catch (e) {
       emit(PostsCreateError(message: e.toString()));
