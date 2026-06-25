@@ -443,7 +443,20 @@ class _ProfileScreenState extends State<ProfileScreen>
           onTap: () {
             Navigator.of(context, rootNavigator: true).push(
               MaterialPageRoute(
-                builder: (_) => PostDetailScreen(post: post),
+                builder: (_) => PostDetailScreen(
+                  post: post,
+                  onLikeChanged: (isLiked, likesCount) {
+                    setState(() {
+                      final idx = _userPosts.indexWhere((p) => p.id == post.id);
+                      if (idx != -1) {
+                        _userPosts[idx] = _userPosts[idx].copyWith(
+                          isLiked: isLiked,
+                          likesCount: likesCount,
+                        );
+                      }
+                    });
+                  },
+                ),
               ),
             );
           },

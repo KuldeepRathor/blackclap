@@ -17,6 +17,9 @@ class PostModel extends Equatable {
   final List<CommentModel> comments;
   final DateTime createdAt;
   final String location;
+  final int likesCount;
+  final int commentsCount;
+  final bool isLiked;
 
   const PostModel({
     required this.id,
@@ -33,6 +36,9 @@ class PostModel extends Equatable {
     required this.comments,
     required this.createdAt,
     required this.location,
+    this.likesCount = 0,
+    this.commentsCount = 0,
+    this.isLiked = false,
   });
 
   /// Maps the response from POST /api/v1/posts (or feed endpoint) to PostModel.
@@ -72,6 +78,9 @@ class PostModel extends Equatable {
       createdAt:
           DateTime.tryParse(map['created_at'] as String? ?? '') ?? DateTime.now(),
       location: map['location'] as String? ?? '',
+      likesCount: map['likes_count'] as int? ?? 0,
+      commentsCount: map['comments_count'] as int? ?? 0,
+      isLiked: map['is_liked'] as bool? ?? false,
     );
   }
 
@@ -96,6 +105,9 @@ class PostModel extends Equatable {
           .toList(),
       createdAt: map['createdAt'] ?? DateTime.now(),
       location: map['location'] ?? '',
+      likesCount: map['likes_count'] as int? ?? map['likesCount'] as int? ?? 0,
+      commentsCount: map['comments_count'] as int? ?? map['commentsCount'] as int? ?? 0,
+      isLiked: map['is_liked'] as bool? ?? map['isLiked'] as bool? ?? false,
     );
   }
 
@@ -115,6 +127,9 @@ class PostModel extends Equatable {
       'comments': comments.map((comment) => comment.toMap()).toList(),
       'createdAt': createdAt,
       'location': location,
+      'likes_count': likesCount,
+      'comments_count': commentsCount,
+      'is_liked': isLiked,
     };
   }
 
@@ -133,6 +148,9 @@ class PostModel extends Equatable {
     List<CommentModel>? comments,
     DateTime? createdAt,
     String? location,
+    int? likesCount,
+    int? commentsCount,
+    bool? isLiked,
   }) {
     return PostModel(
       id: id ?? this.id,
@@ -149,6 +167,9 @@ class PostModel extends Equatable {
       comments: comments ?? this.comments,
       createdAt: createdAt ?? this.createdAt,
       location: location ?? this.location,
+      likesCount: likesCount ?? this.likesCount,
+      commentsCount: commentsCount ?? this.commentsCount,
+      isLiked: isLiked ?? this.isLiked,
     );
   }
 
@@ -168,6 +189,9 @@ class PostModel extends Equatable {
         comments,
         createdAt,
         location,
+        likesCount,
+        commentsCount,
+        isLiked,
       ];
 }
 

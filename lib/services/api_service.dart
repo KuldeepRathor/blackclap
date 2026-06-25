@@ -237,6 +237,24 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> get(String path) async {
+    final url = Uri.parse('${AppUrl.baseUrl}$path');
+    final response = await _sendRequest('GET', url, requireAuth: true);
+    if (response.statusCode == 200) {
+      return json.decode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception(_parseError(response));
+    }
+  }
+
+  Future<void> delete(String path) async {
+    final url = Uri.parse('${AppUrl.baseUrl}$path');
+    final response = await _sendRequest('DELETE', url, requireAuth: true);
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception(_parseError(response));
+    }
+  }
+
   Future<void> putBytes(
     String url,
     Uint8List bytes,
