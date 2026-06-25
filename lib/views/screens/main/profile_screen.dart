@@ -33,7 +33,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-    _loadUserContent();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadUserContent());
   }
 
   @override
@@ -42,8 +42,33 @@ class _ProfileScreenState extends State<ProfileScreen>
     super.dispose();
   }
 
+  Future<void> _refresh() async {
+    final authState = context.read<AuthBloc>().state;
+    if (authState is! AuthAuthenticated) return;
+
+    final userRepository = context.read<UserRepository>();
+    final postRepository = context.read<PostRepository>();
+    final authBloc = context.read<AuthBloc>();
+
+    try {
+      final user = await userRepository.getProfile();
+      if (user != null && mounted) {
+        authBloc.add(AuthUserChanged(user: user));
+      }
+    } catch (_) {}
+
+    try {
+      final posts = await postRepository.getUserPosts(authState.user.uid);
+      if (mounted) setState(() => _userPosts = posts);
+    } catch (_) {
+      if (mounted) setState(() => _userPosts = []);
+    }
+  }
+
   void _loadUserContent() async {
     final authState = context.read<AuthBloc>().state;
+    final userRepository = context.read<UserRepository>();
+    final postRepository = context.read<PostRepository>();
     if (authState is AuthAuthenticated) {
       // Mock data for reels/tagged/reposts
       setState(() {
@@ -61,7 +86,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
       // Fetch real posts from backend
       try {
-        final posts = await context.read<PostRepository>().getUserPosts(authState.user.uid);
+        final posts = await postRepository.getUserPosts(authState.user.uid);
         if (mounted) setState(() => _userPosts = posts);
       } catch (_) {
         // Fall back to empty on error
@@ -72,7 +97,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
       // Fetch the latest profile data from the backend
       try {
-        await context.read<UserRepository>().getProfile();
+        await userRepository.getProfile();
       } catch (_) {}
     }
   }
@@ -118,7 +143,11 @@ class _ProfileScreenState extends State<ProfileScreen>
         builder: (context, state) {
           if (state is AuthAuthenticated) {
             final user = state.user;
-            return NestedScrollView(
+            return RefreshIndicator(
+              onRefresh: _refresh,
+              color: AppColors.accent,
+              notificationPredicate: (notification) => notification.depth == 2,
+              child: NestedScrollView(
               headerSliverBuilder: (context, innerBoxIsScrolled) {
                 return [
                   SliverToBoxAdapter(
@@ -341,7 +370,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                   _buildRepostsGrid(_repostedPosts),
                 ],
               ),
-            );
+            ),   // closes NestedScrollView
+          );     // closes RefreshIndicator
           }
 
           return const Center(
@@ -394,6 +424,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
 
     return GridView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         crossAxisSpacing: 2,
@@ -472,11 +503,12 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
 
     return GridView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         crossAxisSpacing: 2,
         mainAxisSpacing: 2,
-        childAspectRatio: 9 / 16, // Vertical aspect ratio for reels
+        childAspectRatio: 9 / 16,
       ),
       itemCount: reels.length,
       itemBuilder: (context, index) {
@@ -552,6 +584,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
 
     return GridView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         crossAxisSpacing: 2,
@@ -617,6 +650,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
 
     return GridView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         crossAxisSpacing: 2,

@@ -96,22 +96,29 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
             // Image carousel
             if (images.isNotEmpty) ...[
-              AspectRatio(
-                aspectRatio: 1,
+              SizedBox(
+                height: MediaQuery.of(context).size.height * 0.72,
                 child: PageView.builder(
                   itemCount: images.length,
                   onPageChanged: (i) => setState(() => _currentImageIndex = i),
                   itemBuilder: (context, i) => CachedNetworkImage(
-                    imageUrl: images[i],
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: AppColors.neutral600,
-                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: AppColors.neutral600,
-                      child: const Icon(Icons.image_not_supported, color: AppColors.neutral500),
-                    ),
+                      imageUrl: images[i],
+                      fit: BoxFit.contain,
+                      width: double.infinity,
+                      height: double.infinity,
+                      placeholder: (context, url) => Container(
+                        color: AppColors.neutral600,
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        color: AppColors.neutral600,
+                        child: const Icon(
+                          Icons.image_not_supported,
+                          color: AppColors.neutral500,
+                        ),
+                      ),
                   ),
                 ),
               ),
