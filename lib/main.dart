@@ -50,7 +50,11 @@ class BlackClapApp extends StatelessWidget {
                 AuthBloc(userRepository: context.read<UserRepository>())
                   ..add(AuthCheckRequested()),
           ),
-          BlocProvider<PostsBloc>(create: (context) => PostsBloc()),
+          BlocProvider<PostsBloc>(
+            create: (context) => PostsBloc(
+              postRepository: context.read<PostRepository>(),
+            ),
+          ),
         ],
         child: BlocBuilder<AuthBloc, AuthState>(
           builder: (context, state) {

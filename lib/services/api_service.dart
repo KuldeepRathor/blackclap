@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import '../config/app_url.dart';
 import 'token_storage.dart';
@@ -201,6 +202,59 @@ class ApiService {
       return json.decode(response.body) as Map<String, dynamic>;
     } else {
       throw Exception(_parseError(response));
+    }
+  }
+
+  // --- Generic helpers for service classes ---
+
+  Future<List<dynamic>> getList(String path) async {
+    final url = Uri.parse('${AppUrl.baseUrl}$path');
+    final response = await _sendRequest('GET', url, requireAuth: true);
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body) as List<dynamic>;
+    } else {
+      throw Exception(_parseError(response));
+    }
+  }
+
+  Future<Map<String, dynamic>> post(
+    String path,
+    Map<String, dynamic> body,
+  ) async {
+    final url = Uri.parse('${AppUrl.baseUrl}$path');
+    final response = await _sendRequest(
+      'POST',
+      url,
+      requireAuth: true,
+      body: json.encode(body),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return json.decode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception(_parseError(response));
+    }
+  }
+
+  Future<void> putBytes(
+    String url,
+    Uint8List bytes,
+    String contentType,
+  ) async {
+    final response = await http.put(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': contentType,
+        'x-ms-blob-type': 'BlockBlob',
+      },
+      body: bytes,
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception(
+        'Failed to upload bytes to storage (${response.statusCode}).',
+      );
     }
   }
 

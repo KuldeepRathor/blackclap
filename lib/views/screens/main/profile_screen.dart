@@ -6,9 +6,12 @@ import 'package:go_router/go_router.dart';
 import '../../../blocs/auth/auth_bloc.dart';
 import '../../../blocs/auth/auth_state.dart';
 import '../../../blocs/auth/auth_event.dart';
+import '../../../models/post_model.dart';
 import '../../../repositories/mock_data_service.dart';
+import '../../../repositories/post_repository.dart';
 import '../../../repositories/user_repository.dart';
 import '../../../constants/color_constants.dart';
+import 'post_detail_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -20,7 +23,8 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen>
     with TickerProviderStateMixin {
   late TabController _tabController;
-  List<Map<String, dynamic>> _userPosts = [];
+  List<PostModel> _userPosts = [];
+  bool _postsLoading = false;
   List<Map<String, dynamic>> _userReels = [];
   List<Map<String, dynamic>> _taggedPosts = [];
   List<Map<String, dynamic>> _repostedPosts = [];
@@ -41,25 +45,30 @@ class _ProfileScreenState extends State<ProfileScreen>
   void _loadUserContent() async {
     final authState = context.read<AuthBloc>().state;
     if (authState is AuthAuthenticated) {
+      // Mock data for reels/tagged/reposts
       setState(() {
-        // Get user's posts
-        _userPosts = MockDataService.getUserPosts(authState.user.uid);
-
-        // For demo purposes, simulate reels as posts with video icon
-        _userReels = _userPosts.take(2).toList();
-
-        // For demo, simulate tagged posts
+        _userReels = MockDataService.getUserPosts(authState.user.uid).take(2).toList();
         _taggedPosts = MockDataService.getPosts()
             .where((post) => post['uid'] != authState.user.uid)
             .take(3)
             .toList();
-
-        // For demo, simulate reposts
         _repostedPosts = MockDataService.getPosts()
             .where((post) => post['uid'] != authState.user.uid)
             .take(2)
             .toList();
+        _postsLoading = true;
       });
+
+      // Fetch real posts from backend
+      try {
+        final posts = await context.read<PostRepository>().getUserPosts(authState.user.uid);
+        if (mounted) setState(() => _userPosts = posts);
+      } catch (_) {
+        // Fall back to empty on error
+        if (mounted) setState(() => _userPosts = []);
+      } finally {
+        if (mounted) setState(() => _postsLoading = false);
+      }
 
       // Fetch the latest profile data from the backend
       try {
@@ -321,7 +330,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                 controller: _tabController,
                 children: [
                   // Posts Grid
-                  _buildPostsGrid(_userPosts),
+                  _postsLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _buildPostsGrid(_userPosts),
                   // Reels Grid
                   _buildReelsGrid(_userReels),
                   // Tagged Grid
@@ -359,7 +370,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildPostsGrid(List<Map<String, dynamic>> posts) {
+  Widget _buildPostsGrid(List<PostModel> posts) {
     if (posts.isEmpty) {
       return const Center(
         child: Column(
@@ -391,37 +402,52 @@ class _ProfileScreenState extends State<ProfileScreen>
       itemCount: posts.length,
       itemBuilder: (context, index) {
         final post = posts[index];
-        final imageUrls = post['imageUrls'] as List<dynamic>;
-        final imageUrl = imageUrls.isNotEmpty ? imageUrls[0] : '';
+        final imageUrl = post.imageUrls.isNotEmpty ? post.imageUrls[0] : '';
+        final hasMultiple = post.imageUrls.length > 1;
 
         return GestureDetector(
           onTap: () {
-            // Navigate to post detail
+            Navigator.of(context, rootNavigator: true).push(
+              MaterialPageRoute(
+                builder: (_) => PostDetailScreen(post: post),
+              ),
+            );
           },
-          child: Container(
-            color: AppColors.neutral600,
-            child: imageUrl.isNotEmpty
-                ? CachedNetworkImage(
-                    imageUrl: imageUrl,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: AppColors.neutral600,
-                      child: const Center(
-                        child: CircularProgressIndicator(strokeWidth: 2),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Container(
+                color: AppColors.neutral600,
+                child: imageUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          color: AppColors.neutral600,
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          color: AppColors.neutral600,
+                          child: const Icon(
+                            Icons.image_not_supported,
+                            color: AppColors.neutral500,
+                          ),
+                        ),
+                      )
+                    : Container(
+                        color: AppColors.neutral200,
+                        child: const Icon(Icons.image, color: AppColors.neutral500),
                       ),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: AppColors.neutral600,
-                      child: const Icon(
-                        Icons.image_not_supported,
-                        color: AppColors.neutral500,
-                      ),
-                    ),
-                  )
-                : Container(
-                    color: AppColors.neutral200,
-                    child: const Icon(Icons.image, color: AppColors.neutral500),
-                  ),
+              ),
+              if (hasMultiple)
+                const Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Icon(Icons.collections, color: Colors.white, size: 16),
+                ),
+            ],
           ),
         );
       },

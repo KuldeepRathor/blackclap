@@ -1,21 +1,19 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 
 class AppUrl {
   // ─── Domain Configuration ────────────────────────────────────────────────
 
-  static const String _devHost = 'localhost';
+  // 10.0.2.2 → Android emulator, 192.168.x.x → physical device (must be same Wi-Fi)
+  static const String _devHost = '192.168.31.139';//(physical device)
+    // static const String _devHost = '10.0.2.2';//(android emulator)
   static const String _devPort = '8000';
 
   // Update _prodHost when deploying to production
   static const String _prodHost = 'api.blackclap.com';
 
-  static const bool _isProduction = true; // toggle for prod builds
+  static const bool _isProduction = false; // toggle for prod builds
 
   static String get _host {
     if (_isProduction) return 'https://$_prodHost';
-    // Android emulator routes to host machine via 10.0.2.2
-    if (!kIsWeb && Platform.isAndroid) return 'http://10.0.2.2:$_devPort';
     return 'http://$_devHost:$_devPort';
   }
 
@@ -30,6 +28,10 @@ class AppUrl {
 
   static String get me => '$baseUrl/users/me';
   static String userProfile(String username) => '$baseUrl/users/$username';
+
+  // ─── Posts ───────────────────────────────────────────────────────────────
+
+  static String get myPosts => '$baseUrl/posts/me';
 
   // ─── Uploads ─────────────────────────────────────────────────────────────
 
