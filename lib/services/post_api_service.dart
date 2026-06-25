@@ -93,6 +93,12 @@ class PostApiService {
     return list.cast<Map<String, dynamic>>();
   }
 
+  /// Fetch the current user's saved posts.
+  Future<List<Map<String, dynamic>>> getSavedPosts() async {
+    final list = await _api.getList('/users/me/saved-posts');
+    return list.cast<Map<String, dynamic>>();
+  }
+
   /// Step 3: Create the post record with the collected blob URLs.
   Future<Map<String, dynamic>> createPost({
     required String? caption,

@@ -55,24 +55,25 @@ class ApiService {
 
     HttpLogger.logRequest(method, url, headers: defaultHeaders, body: body);
 
+    const timeout = Duration(seconds: 10);
     final startTime = DateTime.now();
     try {
       http.Response response;
       switch (method) {
         case 'GET':
-          response = await http.get(url, headers: defaultHeaders);
+          response = await http.get(url, headers: defaultHeaders).timeout(timeout);
           break;
         case 'POST':
-          response = await http.post(url, headers: defaultHeaders, body: body);
+          response = await http.post(url, headers: defaultHeaders, body: body).timeout(timeout);
           break;
         case 'PATCH':
-          response = await http.patch(url, headers: defaultHeaders, body: body);
+          response = await http.patch(url, headers: defaultHeaders, body: body).timeout(timeout);
           break;
         case 'PUT':
-          response = await http.put(url, headers: defaultHeaders, body: body);
+          response = await http.put(url, headers: defaultHeaders, body: body).timeout(timeout);
           break;
         case 'DELETE':
-          response = await http.delete(url, headers: defaultHeaders);
+          response = await http.delete(url, headers: defaultHeaders).timeout(timeout);
           break;
         default:
           throw Exception('Unsupported HTTP method: $method');

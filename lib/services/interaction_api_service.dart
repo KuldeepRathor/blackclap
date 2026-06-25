@@ -7,6 +7,9 @@ class InteractionApiService {
   Future<Map<String, dynamic>> toggleLike(String postId) =>
       _api.post('/posts/$postId/like', {});
 
+  Future<Map<String, dynamic>> toggleSave(String postId) =>
+      _api.post('/posts/$postId/save', {});
+
   Future<Map<String, dynamic>> getComments(String postId,
           {int limit = 20, int offset = 0}) =>
       _api.get('/posts/$postId/comments?limit=$limit&offset=$offset');

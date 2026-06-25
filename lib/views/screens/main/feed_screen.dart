@@ -155,6 +155,7 @@ class _FeedPostCard extends StatefulWidget {
 class _FeedPostCardState extends State<_FeedPostCard>
     with SingleTickerProviderStateMixin {
   late bool _isLiked;
+  late bool _isSaved;
   late int _likesCount;
   late int _commentsCount;
   bool _showHeart = false;
@@ -170,6 +171,7 @@ class _FeedPostCardState extends State<_FeedPostCard>
     super.initState();
     final likes = widget.post['likes'] as List? ?? [];
     _isLiked = likes.contains(widget.currentUserId);
+    _isSaved = widget.post['is_saved'] as bool? ?? false;
     _likesCount = likes.length;
     _commentsCount =
         (widget.post['comments_count'] as int?) ??
@@ -228,6 +230,20 @@ class _FeedPostCardState extends State<_FeedPostCard>
     await Future.delayed(const Duration(milliseconds: 750));
     if (mounted) setState(() => _showHeart = false);
     if (!_isLiked) await _toggleLike();
+  }
+
+  Future<void> _toggleSave() async {
+    HapticFeedback.lightImpact();
+    final wasSaved = _isSaved;
+    setState(() => _isSaved = !_isSaved);
+    try {
+      final postId = widget.post['id'] as String? ?? '';
+      if (postId.isEmpty) return;
+      final result = await _service.toggleSave(postId);
+      if (mounted) setState(() => _isSaved = result['is_saved'] as bool? ?? _isSaved);
+    } catch (_) {
+      if (mounted) setState(() => _isSaved = wasSaved);
+    }
   }
 
   void _openComments() {
@@ -429,8 +445,17 @@ class _FeedPostCardState extends State<_FeedPostCard>
               const SizedBox(width: 4),
               const Icon(Icons.send_outlined, color: AppColors.neutral200, size: 24),
               const Spacer(),
-              const Icon(Icons.bookmark_border_rounded,
-                  color: AppColors.neutral200, size: 24),
+              GestureDetector(
+                onTap: _toggleSave,
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Icon(
+                    _isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                    color: _isSaved ? AppColors.accent : AppColors.neutral200,
+                    size: 24,
+                  ),
+                ),
+              ),
               const SizedBox(width: 8),
             ],
           ),

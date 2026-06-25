@@ -30,6 +30,7 @@ class PostCard extends StatefulWidget {
 
 class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
   late bool _isLiked;
+  late bool _isSaved;
   late int _likesCount;
   late int _commentsCount;
   int _currentPage = 0;
@@ -47,6 +48,7 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _isLiked = widget.post.isLiked;
+    _isSaved = widget.post.isSaved;
     _likesCount = widget.post.likesCount;
     _commentsCount = widget.post.commentsCount;
 
@@ -111,6 +113,18 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
     await Future.delayed(const Duration(milliseconds: 750));
     if (mounted) setState(() => _showHeart = false);
     if (!_isLiked) await _toggleLike();
+  }
+
+  Future<void> _toggleSave() async {
+    HapticFeedback.lightImpact();
+    final wasSaved = _isSaved;
+    setState(() => _isSaved = !_isSaved);
+    try {
+      final result = await _service.toggleSave(widget.post.id);
+      if (mounted) setState(() => _isSaved = result['is_saved'] as bool? ?? _isSaved);
+    } catch (_) {
+      if (mounted) setState(() => _isSaved = wasSaved);
+    }
   }
 
   void _openComments() {
@@ -452,9 +466,12 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
           ),
           const Spacer(),
           IconButton(
-            icon: const Icon(Icons.bookmark_border_rounded,
-                color: AppColors.neutral200, size: 24),
-            onPressed: () {},
+            icon: Icon(
+              _isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+              color: _isSaved ? AppColors.accent : AppColors.neutral200,
+              size: 24,
+            ),
+            onPressed: _toggleSave,
           ),
         ],
       ),

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:http/http.dart' show ClientException;
 import '../models/user_model.dart';
 import '../services/api_service.dart';
 import '../services/token_storage.dart';
@@ -140,8 +141,13 @@ class UserRepository implements UserRepositoryInterface {
       _authStateController.add(user);
       return user;
     } catch (e) {
-      // If profile fetching fails (e.g. token expired), sign out
-      await signOut();
+      // Only sign out on auth errors; preserve token on network/timeout errors
+      final isNetworkError = e is SocketException ||
+          e is TimeoutException ||
+          e is ClientException;
+      if (!isNetworkError) {
+        await signOut();
+      }
       rethrow;
     }
   }
