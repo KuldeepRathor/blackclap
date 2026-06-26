@@ -35,10 +35,10 @@ class PostDetailScreen extends StatelessWidget {
         builder: (context, authState) {
           final currentUserId =
               authState is AuthAuthenticated ? authState.user.uid : '';
-          final username = authState is AuthAuthenticated
+          final currentUsername = authState is AuthAuthenticated
               ? authState.user.username
               : null;
-          final avatarUrl = authState is AuthAuthenticated
+          final currentAvatarUrl = authState is AuthAuthenticated
               ? authState.user.profileImageUrl
               : null;
 
@@ -46,8 +46,8 @@ class PostDetailScreen extends StatelessWidget {
             child: PostCard(
               post: post,
               currentUserId: currentUserId,
-              username: username,
-              avatarUrl: avatarUrl,
+              currentUsername: currentUsername,
+              currentAvatarUrl: currentAvatarUrl,
               onLikeChanged: onLikeChanged,
             ),
           );

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:http/http.dart' show ClientException;
 import '../models/user_model.dart';
 import '../services/api_service.dart';
 import '../services/token_storage.dart';
@@ -141,14 +140,11 @@ class UserRepository implements UserRepositoryInterface {
       _authStateController.add(user);
       return user;
     } catch (e) {
-      // Only sign out on auth errors; preserve token on network/timeout errors
-      final isNetworkError = e is SocketException ||
-          e is TimeoutException ||
-          e is ClientException;
-      if (!isNetworkError) {
-        await signOut();
-      }
-      rethrow;
+      // On any error (network, server, etc.), return the cached user so we don't
+      // accidentally sign the user out during a background profile refresh.
+      // The only intentional logout paths are: explicit AuthLogoutRequested,
+      // or AuthCheckRequested finding no valid token at startup.
+      return _cachedUser;
     }
   }
 

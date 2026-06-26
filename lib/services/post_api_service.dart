@@ -87,9 +87,24 @@ class PostApiService {
     return downloadUrl;
   }
 
+  /// Fetch the home feed — all posts from all users, newest first.
+  Future<List<Map<String, dynamic>>> getFeedPosts({
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    final list = await _api.getList('/posts/feed?limit=$limit&offset=$offset');
+    return list.cast<Map<String, dynamic>>();
+  }
+
   /// Fetch all posts for the currently authenticated user.
   Future<List<Map<String, dynamic>>> getUserPosts() async {
     final list = await _api.getList('/posts/me');
+    return list.cast<Map<String, dynamic>>();
+  }
+
+  /// Fetch all posts for another user by username.
+  Future<List<Map<String, dynamic>>> getUserPostsByUsername(String username) async {
+    final list = await _api.getList('/posts/user/$username');
     return list.cast<Map<String, dynamic>>();
   }
 

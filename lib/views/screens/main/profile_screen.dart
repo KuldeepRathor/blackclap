@@ -13,6 +13,7 @@ import '../../../repositories/user_repository.dart';
 import '../../../services/api_service.dart';
 import '../../../services/post_api_service.dart';
 import '../../../constants/color_constants.dart';
+import '../../widgets/feed_post_card.dart';
 import 'post_detail_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -26,7 +27,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     with TickerProviderStateMixin {
   late TabController _tabController;
   List<PostModel> _userPosts = [];
-  List<PostModel> _savedPosts = [];
+  List<Map<String, dynamic>> _savedPosts = [];
   bool _postsLoading = false;
   bool _savedLoading = false;
   List<Map<String, dynamic>> _userReels = [];
@@ -61,7 +62,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     try {
       final raw = await _postApiService.getSavedPosts();
       if (mounted) {
-        setState(() => _savedPosts = raw.map(PostModel.fromApiResponse).toList());
+        setState(() => _savedPosts = raw);
       }
     } catch (_) {
       if (mounted) setState(() => _savedPosts = []);
@@ -93,7 +94,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
 
     if (_tabController.index == 3) {
-      setState(() => _savedPosts = []);
+      setState(() => _savedPosts = <Map<String, dynamic>>[]);
       await _loadSavedPosts();
     }
   }
@@ -683,7 +684,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildSavedGrid(List<PostModel> posts) {
+  Widget _buildSavedGrid(List<Map<String, dynamic>> posts) {
     if (posts.isEmpty) {
       return const Center(
         child: Column(
@@ -716,16 +717,19 @@ class _ProfileScreenState extends State<ProfileScreen>
       itemCount: posts.length,
       itemBuilder: (context, index) {
         final post = posts[index];
-        final isVideo = post.mediaType == MediaType.video;
-        final thumbnailUrl = isVideo
-            ? (post.thumbnailUrls.isNotEmpty ? post.thumbnailUrls[0] : '')
-            : (post.imageUrls.isNotEmpty ? post.imageUrls[0] : '');
+        final mediaTypeStr = post['media_type'] as String? ?? 'image';
+        final isVideo = mediaTypeStr == 'video';
+        final media = (post['media'] as List? ?? []);
+        final thumbnailUrl = media.isNotEmpty
+            ? (media[0]['thumbnail_url'] as String? ??
+               (isVideo ? '' : media[0]['media_url'] as String? ?? ''))
+            : '';
 
         return GestureDetector(
           onTap: () {
             Navigator.of(context, rootNavigator: true).push(
               MaterialPageRoute(
-                builder: (_) => PostDetailScreen(post: post),
+                builder: (_) => _SavedPostDetailScreen(post: post),
               ),
             );
           },
@@ -898,5 +902,78 @@ class _ProfileScreenState extends State<ProfileScreen>
         );
       },
     );
+  }
+}
+
+// ── Saved post detail screen using the unified FeedPostCard ──────────────────
+
+class _SavedPostDetailScreen extends StatelessWidget {
+  final Map<String, dynamic> post;
+  const _SavedPostDetailScreen({required this.post});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text(
+          'Post',
+          style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.onSurface),
+        ),
+      ),
+      body: BlocBuilder<AuthBloc, AuthState>(
+        builder: (context, authState) {
+          final currentUserId =
+              authState is AuthAuthenticated ? authState.user.uid : '';
+          final currentUsername =
+              authState is AuthAuthenticated ? authState.user.username : '';
+          final currentAvatar =
+              authState is AuthAuthenticated ? authState.user.profileImageUrl : '';
+
+          return SingleChildScrollView(
+            child: FeedPostCard(
+              post: _normalizePostMap(post),
+              currentUserId: currentUserId,
+              currentUsername: currentUsername,
+              currentAvatar: currentAvatar,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Converts the backend FeedPostResponse map to the field names FeedPostCard expects.
+  Map<String, dynamic> _normalizePostMap(Map<String, dynamic> raw) {
+    final media = (raw['media'] as List? ?? []);
+    final mediaTypeStr = raw['media_type'] as String? ?? 'image';
+    final imageUrls = media
+        .where((m) => m['media_type'] == 'image')
+        .map<String>((m) => m['media_url'] as String)
+        .toList();
+    final videoUrls = media
+        .where((m) => m['media_type'] == 'video')
+        .map<String>((m) => m['media_url'] as String)
+        .toList();
+    final thumbnailUrls = media
+        .map((m) => m['thumbnail_url'] as String?)
+        .where((t) => t != null && t.isNotEmpty)
+        .cast<String>()
+        .toList();
+
+    return {
+      ...raw,
+      'imageUrls': imageUrls,
+      'videoUrls': videoUrls,
+      'thumbnailUrls': thumbnailUrls,
+      'mediaType': mediaTypeStr,
+      'createdAt': DateTime.tryParse(raw['created_at'] as String? ?? '') ?? DateTime.now(),
+    };
   }
 }

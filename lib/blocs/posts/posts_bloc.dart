@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../repositories/mock_data_service.dart';
 import '../../repositories/post_repository.dart';
 import 'posts_event.dart';
 import 'posts_state.dart';
@@ -25,8 +24,8 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
   ) async {
     emit(PostsLoading());
     try {
-      final posts = MockDataService.getPosts();
-      emit(PostsLoaded(posts: posts));
+      final posts = await _postRepository.getPosts();
+      emit(PostsLoaded(posts: posts.map((p) => p.toMap()).toList()));
     } catch (e) {
       emit(PostsError(message: e.toString()));
     }
@@ -37,8 +36,8 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
     Emitter<PostsState> emit,
   ) async {
     try {
-      final posts = MockDataService.getPosts();
-      emit(PostsLoaded(posts: posts));
+      final posts = await _postRepository.getPosts();
+      emit(PostsLoaded(posts: posts.map((p) => p.toMap()).toList()));
     } catch (e) {
       emit(PostsError(message: e.toString()));
     }
@@ -48,25 +47,7 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
     PostsLikeToggled event,
     Emitter<PostsState> emit,
   ) async {
-    try {
-      final currentState = state;
-      if (currentState is PostsLoaded) {
-        final post = currentState.posts.firstWhere(
-          (p) => p['id'] == event.postId,
-        );
-
-        if ((post['likes'] as List).contains(event.userId)) {
-          await MockDataService.unlikePost(event.postId, event.userId);
-        } else {
-          await MockDataService.likePost(event.postId, event.userId);
-        }
-
-        final updatedPosts = MockDataService.getPosts();
-        emit(PostsLoaded(posts: updatedPosts));
-      }
-    } catch (e) {
-      emit(PostsError(message: e.toString()));
-    }
+    // Like toggling is handled optimistically in _FeedPostCard via InteractionApiService.
   }
 
   Future<void> _onCreateRequested(

@@ -32,6 +32,12 @@ class AppUrl {
   // ─── Posts ───────────────────────────────────────────────────────────────
 
   static String get myPosts => '$baseUrl/posts/me';
+  static String userPosts(String username) => '$baseUrl/posts/user/$username';
+
+  // ─── Follows ─────────────────────────────────────────────────────────────
+
+  static String followUser(String username) => '$baseUrl/follows/$username';
+  static String unfollowUser(String username) => '$baseUrl/follows/$username';
 
   // ─── Uploads ─────────────────────────────────────────────────────────────
 

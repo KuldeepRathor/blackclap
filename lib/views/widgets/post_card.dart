@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import '../../constants/color_constants.dart';
 import '../../models/post_model.dart';
 import '../../services/api_service.dart';
@@ -11,16 +12,18 @@ import 'comments_sheet.dart';
 class PostCard extends StatefulWidget {
   final PostModel post;
   final String currentUserId;
-  final String? username;
-  final String? avatarUrl;
+  /// Logged-in user's username — used only for the comment input, not the post header.
+  final String? currentUsername;
+  /// Logged-in user's avatar — used only for the comment input avatar, not the post header.
+  final String? currentAvatarUrl;
   final void Function(bool isLiked, int likesCount)? onLikeChanged;
 
   const PostCard({
     super.key,
     required this.post,
     required this.currentUserId,
-    this.username,
-    this.avatarUrl,
+    this.currentUsername,
+    this.currentAvatarUrl,
     this.onLikeChanged,
   });
 
@@ -135,8 +138,8 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
       builder: (_) => CommentsSheet(
         post: widget.post,
         currentUserId: widget.currentUserId,
-        currentUserAvatar: widget.avatarUrl,
-        currentUsername: widget.username ?? widget.post.username,
+        currentUserAvatar: widget.currentAvatarUrl,
+        currentUsername: widget.currentUsername ?? widget.post.username,
         onCommentAdded: () {
           if (mounted) setState(() => _commentsCount++);
         },
@@ -162,14 +165,11 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final displayName = widget.username?.isNotEmpty == true
-        ? widget.username!
-        : (widget.post.username.isNotEmpty ? widget.post.username : 'user');
-    final avatarUrl = widget.avatarUrl?.isNotEmpty == true
-        ? widget.avatarUrl
-        : (widget.post.profileImageUrl.isNotEmpty
-            ? widget.post.profileImageUrl
-            : null);
+    // Header always shows the POST AUTHOR's info, not the logged-in user's info.
+    final displayName = widget.post.username.isNotEmpty ? widget.post.username : 'user';
+    final avatarUrl = widget.post.profileImageUrl.isNotEmpty
+        ? widget.post.profileImageUrl
+        : null;
 
     return Container(
       color: AppColors.background,
@@ -187,31 +187,42 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
     );
   }
 
+  void _navigateToAuthorProfile(BuildContext context, String authorUsername) {
+    if (authorUsername.isEmpty) return;
+    // If the author is the current user, don't navigate (they can use the profile tab)
+    if (authorUsername == widget.currentUserId) return;
+    context.push('/profile/$authorUsername');
+  }
+
   Widget _buildHeader(String displayName, String? avatarUrl) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: Row(
-        children: [
-          _buildAvatar(displayName, avatarUrl, 18),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(displayName,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13.5,
-                        color: AppColors.onSurface)),
-                if (widget.post.location.isNotEmpty)
-                  Text(widget.post.location,
+    final authorUsername = widget.post.username;
+    return GestureDetector(
+      onTap: () => _navigateToAuthorProfile(context, authorUsername),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: [
+            _buildAvatar(displayName, avatarUrl, 18),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(displayName,
                       style: const TextStyle(
-                          fontSize: 11, color: AppColors.neutral400)),
-              ],
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13.5,
+                          color: AppColors.onSurface)),
+                  if (widget.post.location.isNotEmpty)
+                    Text(widget.post.location,
+                        style: const TextStyle(
+                            fontSize: 11, color: AppColors.neutral400)),
+                ],
+              ),
             ),
-          ),
-          const Icon(Icons.more_horiz, color: AppColors.neutral400, size: 20),
-        ],
+            const Icon(Icons.more_horiz, color: AppColors.neutral400, size: 20),
+          ],
+        ),
       ),
     );
   }
@@ -287,21 +298,20 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
     return [
       AspectRatio(
         aspectRatio: 1,
-        child: PageView.builder(
-          itemCount: images.length,
-          onPageChanged: (i) => setState(() => _currentPage = i),
-          itemBuilder: (_, i) => CachedNetworkImage(
-            imageUrl: images[i],
-            fit: BoxFit.cover,
-            placeholder: (_, __) => Container(
-                color: AppColors.neutral600,
-                child: const Center(
-                    child: CircularProgressIndicator(
-                        color: AppColors.accent, strokeWidth: 2))),
-            errorWidget: (_, __, ___) => Container(
-                color: AppColors.neutral600,
-                child: const Icon(Icons.image_not_supported,
-                    color: AppColors.neutral400)),
+        child: ColoredBox(
+          color: Colors.black,
+          child: PageView.builder(
+            itemCount: images.length,
+            onPageChanged: (i) => setState(() => _currentPage = i),
+            itemBuilder: (_, i) => CachedNetworkImage(
+              imageUrl: images[i],
+              fit: BoxFit.contain,
+              placeholder: (_, __) => const Center(
+                  child: CircularProgressIndicator(
+                      color: AppColors.accent, strokeWidth: 2)),
+              errorWidget: (_, __, ___) => const Icon(Icons.image_not_supported,
+                  color: AppColors.neutral400),
+            ),
           ),
         ),
       ),

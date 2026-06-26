@@ -6,7 +6,7 @@ import '../services/post_api_service.dart';
 import 'mock_data_service.dart';
 
 abstract class PostRepositoryInterface {
-  Future<List<PostModel>> getPosts();
+  Future<List<PostModel>> getPosts({int limit = 20, int offset = 0});
   Future<List<PostModel>> getUserPosts(String uid);
   Future<PostModel?> getPost(String postId);
   Future<void> likePost(String postId, String userId);
@@ -28,9 +28,9 @@ class PostRepository implements PostRepositoryInterface {
   final PostApiService _postApiService = PostApiService(ApiService());
 
   @override
-  Future<List<PostModel>> getPosts() async {
-    final postData = MockDataService.getPosts();
-    return postData.map((post) => PostModel.fromMap(post)).toList();
+  Future<List<PostModel>> getPosts({int limit = 20, int offset = 0}) async {
+    final rawPosts = await _postApiService.getFeedPosts(limit: limit, offset: offset);
+    return rawPosts.map((post) => PostModel.fromApiResponse(post)).toList();
   }
 
   @override

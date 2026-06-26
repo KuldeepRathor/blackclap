@@ -206,6 +206,26 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> followUser(String username) async {
+    final url = Uri.parse(AppUrl.followUser(username));
+    final response = await _sendRequest('POST', url, requireAuth: true);
+    if (response.statusCode == 200) {
+      return json.decode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception(_parseError(response));
+    }
+  }
+
+  Future<Map<String, dynamic>> unfollowUser(String username) async {
+    final url = Uri.parse(AppUrl.unfollowUser(username));
+    final response = await _sendRequest('DELETE', url, requireAuth: true);
+    if (response.statusCode == 200) {
+      return json.decode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception(_parseError(response));
+    }
+  }
+
   // --- Generic helpers for service classes ---
 
   Future<List<dynamic>> getList(String path) async {
