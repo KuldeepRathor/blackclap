@@ -45,9 +45,72 @@ class PostApiService {
     return downloadUrl;
   }
 
+  /// Upload a video file. Returns the final download URL.
+  Future<String> uploadVideo(File file) async {
+    final fileName = file.path.split('/').last;
+    final ext = fileName.split('.').last.toLowerCase();
+    final contentType = switch (ext) {
+      'mov' => 'video/quicktime',
+      'webm' => 'video/webm',
+      _ => 'video/mp4',
+    };
+
+    final (:uploadUrl, :downloadUrl) = await _getPresignedUrl(
+      fileName: fileName,
+      fileType: contentType,
+    );
+
+    final bytes = await file.readAsBytes();
+    await _api.putBytes(uploadUrl, bytes, contentType);
+
+    return downloadUrl;
+  }
+
+  /// Upload a thumbnail image (for video posts). Returns the final download URL.
+  Future<String> uploadThumbnail(File file) async {
+    final fileName = file.path.split('/').last;
+    final ext = fileName.split('.').last.toLowerCase();
+    final contentType = switch (ext) {
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      _ => 'image/jpeg',
+    };
+
+    final (:uploadUrl, :downloadUrl) = await _getPresignedUrl(
+      fileName: fileName,
+      fileType: contentType,
+    );
+
+    final bytes = await file.readAsBytes();
+    await _api.putBytes(uploadUrl, bytes, contentType);
+
+    return downloadUrl;
+  }
+
+  /// Fetch the home feed — all posts from all users, newest first.
+  Future<List<Map<String, dynamic>>> getFeedPosts({
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    final list = await _api.getList('/posts/feed?limit=$limit&offset=$offset');
+    return list.cast<Map<String, dynamic>>();
+  }
+
   /// Fetch all posts for the currently authenticated user.
   Future<List<Map<String, dynamic>>> getUserPosts() async {
     final list = await _api.getList('/posts/me');
+    return list.cast<Map<String, dynamic>>();
+  }
+
+  /// Fetch all posts for another user by username.
+  Future<List<Map<String, dynamic>>> getUserPostsByUsername(String username) async {
+    final list = await _api.getList('/posts/user/$username');
+    return list.cast<Map<String, dynamic>>();
+  }
+
+  /// Fetch the current user's saved posts.
+  Future<List<Map<String, dynamic>>> getSavedPosts() async {
+    final list = await _api.getList('/users/me/saved-posts');
     return list.cast<Map<String, dynamic>>();
   }
 
@@ -57,12 +120,14 @@ class PostApiService {
     required String? location,
     required String mediaType,
     required List<String> mediaUrls,
+    String? thumbnailUrl,
   }) async {
     return await _api.post('/posts', {
       if (caption != null && caption.isNotEmpty) 'caption': caption,
       if (location != null && location.isNotEmpty) 'location': location,
       'media_type': mediaType,
       'media_urls': mediaUrls,
+      if (thumbnailUrl != null) 'thumbnail_url': thumbnailUrl,
     });
   }
 }

@@ -11,11 +11,16 @@ class PostModel extends Equatable {
   final String caption;
   final List<String> imageUrls;
   final List<String> videoUrls;
+  final List<String> thumbnailUrls;
   final MediaType mediaType;
   final List<String> likes;
   final List<CommentModel> comments;
   final DateTime createdAt;
   final String location;
+  final int likesCount;
+  final int commentsCount;
+  final bool isLiked;
+  final bool isSaved;
 
   const PostModel({
     required this.id,
@@ -26,11 +31,16 @@ class PostModel extends Equatable {
     required this.caption,
     required this.imageUrls,
     this.videoUrls = const [],
+    this.thumbnailUrls = const [],
     this.mediaType = MediaType.text,
     required this.likes,
     required this.comments,
     required this.createdAt,
     required this.location,
+    this.likesCount = 0,
+    this.commentsCount = 0,
+    this.isLiked = false,
+    this.isSaved = false,
   });
 
   /// Maps the response from POST /api/v1/posts (or feed endpoint) to PostModel.
@@ -44,6 +54,11 @@ class PostModel extends Equatable {
         .where((m) => m['media_type'] == 'video')
         .map<String>((m) => m['media_url'] as String)
         .toList();
+    final thumbnailUrls = media
+        .map((m) => m['thumbnail_url'] as String?)
+        .where((t) => t != null && t.isNotEmpty)
+        .cast<String>()
+        .toList();
     final mediaTypeStr = map['media_type'] as String? ?? 'text';
 
     return PostModel(
@@ -55,6 +70,7 @@ class PostModel extends Equatable {
       caption: map['caption'] as String? ?? '',
       imageUrls: imageUrls,
       videoUrls: videoUrls,
+      thumbnailUrls: thumbnailUrls,
       mediaType: MediaType.values.firstWhere(
         (e) => e.name == mediaTypeStr,
         orElse: () => MediaType.text,
@@ -64,6 +80,10 @@ class PostModel extends Equatable {
       createdAt:
           DateTime.tryParse(map['created_at'] as String? ?? '') ?? DateTime.now(),
       location: map['location'] as String? ?? '',
+      likesCount: map['likes_count'] as int? ?? 0,
+      commentsCount: map['comments_count'] as int? ?? 0,
+      isLiked: map['is_liked'] as bool? ?? false,
+      isSaved: map['is_saved'] as bool? ?? false,
     );
   }
 
@@ -77,6 +97,7 @@ class PostModel extends Equatable {
       caption: map['caption'] ?? '',
       imageUrls: List<String>.from(map['imageUrls'] ?? []),
       videoUrls: List<String>.from(map['videoUrls'] ?? []),
+      thumbnailUrls: List<String>.from(map['thumbnailUrls'] ?? []),
       mediaType: MediaType.values.firstWhere(
         (e) => e.toString() == 'MediaType.${map['mediaType']}',
         orElse: () => MediaType.text,
@@ -87,6 +108,10 @@ class PostModel extends Equatable {
           .toList(),
       createdAt: map['createdAt'] ?? DateTime.now(),
       location: map['location'] ?? '',
+      likesCount: map['likes_count'] as int? ?? map['likesCount'] as int? ?? 0,
+      commentsCount: map['comments_count'] as int? ?? map['commentsCount'] as int? ?? 0,
+      isLiked: map['is_liked'] as bool? ?? map['isLiked'] as bool? ?? false,
+      isSaved: map['is_saved'] as bool? ?? map['isSaved'] as bool? ?? false,
     );
   }
 
@@ -100,11 +125,16 @@ class PostModel extends Equatable {
       'caption': caption,
       'imageUrls': imageUrls,
       'videoUrls': videoUrls,
+      'thumbnailUrls': thumbnailUrls,
       'mediaType': mediaType.toString().split('.').last,
       'likes': likes,
       'comments': comments.map((comment) => comment.toMap()).toList(),
       'createdAt': createdAt,
       'location': location,
+      'likes_count': likesCount,
+      'comments_count': commentsCount,
+      'is_liked': isLiked,
+      'is_saved': isSaved,
     };
   }
 
@@ -117,11 +147,16 @@ class PostModel extends Equatable {
     String? caption,
     List<String>? imageUrls,
     List<String>? videoUrls,
+    List<String>? thumbnailUrls,
     MediaType? mediaType,
     List<String>? likes,
     List<CommentModel>? comments,
     DateTime? createdAt,
     String? location,
+    int? likesCount,
+    int? commentsCount,
+    bool? isLiked,
+    bool? isSaved,
   }) {
     return PostModel(
       id: id ?? this.id,
@@ -132,11 +167,16 @@ class PostModel extends Equatable {
       caption: caption ?? this.caption,
       imageUrls: imageUrls ?? this.imageUrls,
       videoUrls: videoUrls ?? this.videoUrls,
+      thumbnailUrls: thumbnailUrls ?? this.thumbnailUrls,
       mediaType: mediaType ?? this.mediaType,
       likes: likes ?? this.likes,
       comments: comments ?? this.comments,
       createdAt: createdAt ?? this.createdAt,
       location: location ?? this.location,
+      likesCount: likesCount ?? this.likesCount,
+      commentsCount: commentsCount ?? this.commentsCount,
+      isLiked: isLiked ?? this.isLiked,
+      isSaved: isSaved ?? this.isSaved,
     );
   }
 
@@ -150,11 +190,16 @@ class PostModel extends Equatable {
         caption,
         imageUrls,
         videoUrls,
+        thumbnailUrls,
         mediaType,
         likes,
         comments,
         createdAt,
         location,
+        likesCount,
+        commentsCount,
+        isLiked,
+        isSaved,
       ];
 }
 

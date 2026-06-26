@@ -22,17 +22,25 @@ class PostsLikeToggled extends PostsEvent {
 }
 
 class PostsCreateRequested extends PostsEvent {
-  /// Absolute file paths for each selected image (from XFile.path).
+  /// Absolute file paths for selected media (images or single video).
   final List<String> filePaths;
   final String caption;
   final String? location;
+
+  /// 'image', 'video', or 'text'
+  final String mediaType;
+
+  /// Absolute path to the generated thumbnail (video posts only).
+  final String? thumbnailPath;
 
   const PostsCreateRequested({
     required this.filePaths,
     required this.caption,
     this.location,
+    this.mediaType = 'image',
+    this.thumbnailPath,
   });
 
   @override
-  List<Object?> get props => [filePaths, caption, location];
+  List<Object?> get props => [filePaths, caption, location, mediaType, thumbnailPath];
 }

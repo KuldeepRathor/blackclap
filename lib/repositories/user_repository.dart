@@ -140,9 +140,11 @@ class UserRepository implements UserRepositoryInterface {
       _authStateController.add(user);
       return user;
     } catch (e) {
-      // If profile fetching fails (e.g. token expired), sign out
-      await signOut();
-      rethrow;
+      // On any error (network, server, etc.), return the cached user so we don't
+      // accidentally sign the user out during a background profile refresh.
+      // The only intentional logout paths are: explicit AuthLogoutRequested,
+      // or AuthCheckRequested finding no valid token at startup.
+      return _cachedUser;
     }
   }
 

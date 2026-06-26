@@ -11,6 +11,7 @@ import 'views/screens/main/create_post_screen.dart';
 import 'views/screens/main/stories_screen.dart';
 import 'views/screens/main/reels_screen.dart';
 import 'views/screens/main/edit_profile_screen.dart';
+import 'views/screens/main/other_user_profile_screen.dart';
 import 'blocs/auth/auth_bloc.dart';
 import 'blocs/auth/auth_event.dart';
 import 'blocs/auth/auth_state.dart';
@@ -57,6 +58,10 @@ class BlackClapApp extends StatelessWidget {
           ),
         ],
         child: BlocBuilder<AuthBloc, AuthState>(
+          // Only recreate the GoRouter when authentication STATUS changes,
+          // not on every user-data refresh (avoids navigation reset on getProfile() calls).
+          buildWhen: (previous, current) =>
+              previous.runtimeType != current.runtimeType,
           builder: (context, state) {
             return MaterialApp.router(
               debugShowCheckedModeBanner: false,
@@ -113,7 +118,9 @@ class BlackClapApp extends StatelessWidget {
     return GoRouter(
       initialLocation: authState is AuthAuthenticated ? '/home' : '/login',
       redirect: (context, state) {
-        final isAuthenticated = authState is AuthAuthenticated;
+        // Read current auth state at navigation time, not the stale closure value.
+        final currentAuth = BlocProvider.of<AuthBloc>(context, listen: false).state;
+        final isAuthenticated = currentAuth is AuthAuthenticated;
         final isLoggingIn =
             state.uri.path == '/login' || state.uri.path == '/signup';
 
@@ -149,6 +156,13 @@ class BlackClapApp extends StatelessWidget {
         GoRoute(
           path: '/edit-profile',
           builder: (context, state) => const EditProfileScreen(),
+        ),
+        GoRoute(
+          path: '/profile/:username',
+          builder: (context, state) {
+            final username = state.pathParameters['username']!;
+            return OtherUserProfileScreen(username: username);
+          },
         ),
       ],
     );

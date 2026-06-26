@@ -6,7 +6,7 @@ import '../services/post_api_service.dart';
 import 'mock_data_service.dart';
 
 abstract class PostRepositoryInterface {
-  Future<List<PostModel>> getPosts();
+  Future<List<PostModel>> getPosts({int limit = 20, int offset = 0});
   Future<List<PostModel>> getUserPosts(String uid);
   Future<PostModel?> getPost(String postId);
   Future<void> likePost(String postId, String userId);
@@ -16,15 +16,21 @@ abstract class PostRepositoryInterface {
     required String caption,
     String? location,
   });
+  Future<PostModel> createVideoPost({
+    required File videoFile,
+    File? thumbnailFile,
+    required String caption,
+    String? location,
+  });
 }
 
 class PostRepository implements PostRepositoryInterface {
   final PostApiService _postApiService = PostApiService(ApiService());
 
   @override
-  Future<List<PostModel>> getPosts() async {
-    final postData = MockDataService.getPosts();
-    return postData.map((post) => PostModel.fromMap(post)).toList();
+  Future<List<PostModel>> getPosts({int limit = 20, int offset = 0}) async {
+    final rawPosts = await _postApiService.getFeedPosts(limit: limit, offset: offset);
+    return rawPosts.map((post) => PostModel.fromApiResponse(post)).toList();
   }
 
   @override
@@ -50,14 +56,12 @@ class PostRepository implements PostRepositoryInterface {
   }
 
   /// Uploads each image to Azure/local storage, then creates the post record.
-  /// Returns the created PostModel from the API response.
   @override
   Future<PostModel> createPost({
     required List<File> imageFiles,
     required String caption,
     String? location,
   }) async {
-    // Upload all images in parallel
     final mediaUrls = await Future.wait(
       imageFiles.map((file) => _postApiService.uploadImage(file)),
     );
@@ -67,6 +71,32 @@ class PostRepository implements PostRepositoryInterface {
       location: location,
       mediaType: imageFiles.isEmpty ? 'text' : 'image',
       mediaUrls: mediaUrls,
+    );
+
+    return PostModel.fromApiResponse(response);
+  }
+
+  /// Uploads video (and optional thumbnail), then creates the post record.
+  @override
+  Future<PostModel> createVideoPost({
+    required File videoFile,
+    File? thumbnailFile,
+    required String caption,
+    String? location,
+  }) async {
+    final videoUrl = await _postApiService.uploadVideo(videoFile);
+
+    String? thumbnailUrl;
+    if (thumbnailFile != null) {
+      thumbnailUrl = await _postApiService.uploadThumbnail(thumbnailFile);
+    }
+
+    final response = await _postApiService.createPost(
+      caption: caption,
+      location: location,
+      mediaType: 'video',
+      mediaUrls: [videoUrl],
+      thumbnailUrl: thumbnailUrl,
     );
 
     return PostModel.fromApiResponse(response);

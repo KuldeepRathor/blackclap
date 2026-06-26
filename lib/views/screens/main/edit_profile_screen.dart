@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../blocs/auth/auth_bloc.dart';
+import '../../../blocs/auth/auth_event.dart';
 import '../../../blocs/auth/auth_state.dart';
 import '../../../repositories/user_repository.dart';
 import '../../../constants/color_constants.dart';
@@ -24,6 +25,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _isSaving = false;
   bool _isUploadingImage = false;
   String? _temporaryAvatarUrl;
+
+  Future<void> _refreshProfile() async {
+    final userRepository = context.read<UserRepository>();
+    try {
+      final user = await userRepository.getProfile();
+      if (user != null && mounted) {
+        setState(() {
+          _fullNameController.text = user.fullName;
+          _usernameController.text = user.username;
+          _bioController.text = user.bio;
+          _emailController.text = user.email;
+          _temporaryAvatarUrl = user.profileImageUrl;
+        });
+        if (mounted) {
+          context.read<AuthBloc>().add(AuthUserChanged(user: user));
+        }
+      }
+    } catch (_) {}
+  }
 
   @override
   void initState() {
@@ -174,9 +194,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
           body: Form(
             key: _formKey,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
+            child: RefreshIndicator(
+              onRefresh: _refreshProfile,
+              color: AppColors.accent,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
                 children: [
                   const SizedBox(height: 24),
                   
@@ -336,10 +360,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                   const SizedBox(height: 32),
                 ],
-              ),
-            ),
-          ),
-        );
+              ),         // closes Column
+            ),           // closes SingleChildScrollView
+          ),             // closes RefreshIndicator
+        ),               // closes Form
+        );               // closes Scaffold
       },
     );
   }

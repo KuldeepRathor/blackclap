@@ -10,7 +10,10 @@ import '../../../models/post_model.dart';
 import '../../../repositories/mock_data_service.dart';
 import '../../../repositories/post_repository.dart';
 import '../../../repositories/user_repository.dart';
+import '../../../services/api_service.dart';
+import '../../../services/post_api_service.dart';
 import '../../../constants/color_constants.dart';
+import '../../widgets/feed_post_card.dart';
 import 'post_detail_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -24,26 +27,82 @@ class _ProfileScreenState extends State<ProfileScreen>
     with TickerProviderStateMixin {
   late TabController _tabController;
   List<PostModel> _userPosts = [];
+  List<Map<String, dynamic>> _savedPosts = [];
   bool _postsLoading = false;
+  bool _savedLoading = false;
   List<Map<String, dynamic>> _userReels = [];
   List<Map<String, dynamic>> _taggedPosts = [];
-  List<Map<String, dynamic>> _repostedPosts = [];
+
+  final PostApiService _postApiService = PostApiService(ApiService());
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-    _loadUserContent();
+    _tabController.addListener(_onTabChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadUserContent());
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
   }
 
+  void _onTabChanged() {
+    if (_tabController.index == 3 && _savedPosts.isEmpty && !_savedLoading) {
+      _loadSavedPosts();
+    }
+  }
+
+  Future<void> _loadSavedPosts() async {
+    if (!mounted) return;
+    setState(() => _savedLoading = true);
+    try {
+      final raw = await _postApiService.getSavedPosts();
+      if (mounted) {
+        setState(() => _savedPosts = raw);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _savedPosts = []);
+    } finally {
+      if (mounted) setState(() => _savedLoading = false);
+    }
+  }
+
+  Future<void> _refresh() async {
+    final authState = context.read<AuthBloc>().state;
+    if (authState is! AuthAuthenticated) return;
+
+    final userRepository = context.read<UserRepository>();
+    final postRepository = context.read<PostRepository>();
+    final authBloc = context.read<AuthBloc>();
+
+    try {
+      final user = await userRepository.getProfile();
+      if (user != null && mounted) {
+        authBloc.add(AuthUserChanged(user: user));
+      }
+    } catch (_) {}
+
+    try {
+      final posts = await postRepository.getUserPosts(authState.user.uid);
+      if (mounted) setState(() => _userPosts = posts);
+    } catch (_) {
+      if (mounted) setState(() => _userPosts = []);
+    }
+
+    if (_tabController.index == 3) {
+      setState(() => _savedPosts = <Map<String, dynamic>>[]);
+      await _loadSavedPosts();
+    }
+  }
+
   void _loadUserContent() async {
     final authState = context.read<AuthBloc>().state;
+    final userRepository = context.read<UserRepository>();
+    final postRepository = context.read<PostRepository>();
     if (authState is AuthAuthenticated) {
       // Mock data for reels/tagged/reposts
       setState(() {
@@ -52,16 +111,12 @@ class _ProfileScreenState extends State<ProfileScreen>
             .where((post) => post['uid'] != authState.user.uid)
             .take(3)
             .toList();
-        _repostedPosts = MockDataService.getPosts()
-            .where((post) => post['uid'] != authState.user.uid)
-            .take(2)
-            .toList();
         _postsLoading = true;
       });
 
       // Fetch real posts from backend
       try {
-        final posts = await context.read<PostRepository>().getUserPosts(authState.user.uid);
+        final posts = await postRepository.getUserPosts(authState.user.uid);
         if (mounted) setState(() => _userPosts = posts);
       } catch (_) {
         // Fall back to empty on error
@@ -72,7 +127,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
       // Fetch the latest profile data from the backend
       try {
-        await context.read<UserRepository>().getProfile();
+        await userRepository.getProfile();
       } catch (_) {}
     }
   }
@@ -118,7 +173,11 @@ class _ProfileScreenState extends State<ProfileScreen>
         builder: (context, state) {
           if (state is AuthAuthenticated) {
             final user = state.user;
-            return NestedScrollView(
+            return RefreshIndicator(
+              onRefresh: _refresh,
+              color: AppColors.accent,
+              notificationPredicate: (notification) => notification.depth == 2,
+              child: NestedScrollView(
               headerSliverBuilder: (context, innerBoxIsScrolled) {
                 return [
                   SliverToBoxAdapter(
@@ -337,11 +396,14 @@ class _ProfileScreenState extends State<ProfileScreen>
                   _buildReelsGrid(_userReels),
                   // Tagged Grid
                   _buildTaggedGrid(_taggedPosts),
-                  // Reposts Grid
-                  _buildRepostsGrid(_repostedPosts),
+                  // Saved Grid
+                  _savedLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _buildSavedGrid(_savedPosts),
                 ],
               ),
-            );
+            ),   // closes NestedScrollView
+          );     // closes RefreshIndicator
           }
 
           return const Center(
@@ -394,6 +456,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
 
     return GridView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         crossAxisSpacing: 2,
@@ -402,14 +465,30 @@ class _ProfileScreenState extends State<ProfileScreen>
       itemCount: posts.length,
       itemBuilder: (context, index) {
         final post = posts[index];
-        final imageUrl = post.imageUrls.isNotEmpty ? post.imageUrls[0] : '';
+        final isVideo = post.mediaType == MediaType.video;
+        final thumbnailUrl = isVideo
+            ? (post.thumbnailUrls.isNotEmpty ? post.thumbnailUrls[0] : '')
+            : (post.imageUrls.isNotEmpty ? post.imageUrls[0] : '');
         final hasMultiple = post.imageUrls.length > 1;
 
         return GestureDetector(
           onTap: () {
             Navigator.of(context, rootNavigator: true).push(
               MaterialPageRoute(
-                builder: (_) => PostDetailScreen(post: post),
+                builder: (_) => PostDetailScreen(
+                  post: post,
+                  onLikeChanged: (isLiked, likesCount) {
+                    setState(() {
+                      final idx = _userPosts.indexWhere((p) => p.id == post.id);
+                      if (idx != -1) {
+                        _userPosts[idx] = _userPosts[idx].copyWith(
+                          isLiked: isLiked,
+                          likesCount: likesCount,
+                        );
+                      }
+                    });
+                  },
+                ),
               ),
             );
           },
@@ -418,9 +497,9 @@ class _ProfileScreenState extends State<ProfileScreen>
             children: [
               Container(
                 color: AppColors.neutral600,
-                child: imageUrl.isNotEmpty
+                child: thumbnailUrl.isNotEmpty
                     ? CachedNetworkImage(
-                        imageUrl: imageUrl,
+                        imageUrl: thumbnailUrl,
                         fit: BoxFit.cover,
                         placeholder: (context, url) => Container(
                           color: AppColors.neutral600,
@@ -430,18 +509,28 @@ class _ProfileScreenState extends State<ProfileScreen>
                         ),
                         errorWidget: (context, url, error) => Container(
                           color: AppColors.neutral600,
-                          child: const Icon(
-                            Icons.image_not_supported,
+                          child: Icon(
+                            isVideo ? Icons.videocam_off : Icons.image_not_supported,
                             color: AppColors.neutral500,
                           ),
                         ),
                       )
                     : Container(
-                        color: AppColors.neutral200,
-                        child: const Icon(Icons.image, color: AppColors.neutral500),
+                        color: AppColors.neutral800,
+                        child: Icon(
+                          isVideo ? Icons.play_circle_outline : Icons.image,
+                          color: AppColors.neutral500,
+                          size: 32,
+                        ),
                       ),
               ),
-              if (hasMultiple)
+              if (isVideo)
+                const Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Icon(Icons.play_arrow, color: Colors.white, size: 18),
+                ),
+              if (!isVideo && hasMultiple)
                 const Positioned(
                   top: 6,
                   right: 6,
@@ -472,11 +561,12 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
 
     return GridView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         crossAxisSpacing: 2,
         mainAxisSpacing: 2,
-        childAspectRatio: 9 / 16, // Vertical aspect ratio for reels
+        childAspectRatio: 9 / 16,
       ),
       itemCount: reels.length,
       itemBuilder: (context, index) {
@@ -552,6 +642,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
 
     return GridView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         crossAxisSpacing: 2,
@@ -593,8 +684,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildRepostsGrid(List<Map<String, dynamic>> reposts) {
-    if (reposts.isEmpty) {
+  Widget _buildSavedGrid(List<Map<String, dynamic>> posts) {
+    if (posts.isEmpty) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -617,41 +708,70 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
 
     return GridView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         crossAxisSpacing: 2,
         mainAxisSpacing: 2,
       ),
-      itemCount: reposts.length,
+      itemCount: posts.length,
       itemBuilder: (context, index) {
-        final post = reposts[index];
-        final imageUrls = post['imageUrls'] as List<dynamic>;
-        final imageUrl = imageUrls.isNotEmpty ? imageUrls[0] : '';
+        final post = posts[index];
+        final mediaTypeStr = post['media_type'] as String? ?? 'image';
+        final isVideo = mediaTypeStr == 'video';
+        final media = (post['media'] as List? ?? []);
+        final thumbnailUrl = media.isNotEmpty
+            ? (media[0]['thumbnail_url'] as String? ??
+               (isVideo ? '' : media[0]['media_url'] as String? ?? ''))
+            : '';
 
         return GestureDetector(
           onTap: () {
-            // Navigate to post detail
+            Navigator.of(context, rootNavigator: true).push(
+              MaterialPageRoute(
+                builder: (_) => _SavedPostDetailScreen(post: post),
+              ),
+            );
           },
-          child: Container(
-            color: AppColors.neutral600,
-            child: imageUrl.isNotEmpty
-                ? CachedNetworkImage(
-                    imageUrl: imageUrl,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) =>
-                        Container(color: AppColors.neutral200),
-                    errorWidget: (context, url, error) => Container(
-                      color: AppColors.neutral600,
-                      child: const Icon(
-                        Icons.image_not_supported,
-                        color: AppColors.neutral500,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Container(
+                color: AppColors.neutral600,
+                child: thumbnailUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: thumbnailUrl,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => Container(color: AppColors.neutral600),
+                        errorWidget: (_, __, ___) => Container(
+                          color: AppColors.neutral600,
+                          child: Icon(
+                            isVideo ? Icons.videocam_off : Icons.image_not_supported,
+                            color: AppColors.neutral500,
+                          ),
+                        ),
+                      )
+                    : Container(
+                        color: AppColors.neutral800,
+                        child: Icon(
+                          isVideo ? Icons.play_circle_outline : Icons.image,
+                          color: AppColors.neutral500,
+                          size: 32,
+                        ),
                       ),
-                    ),
-                  )
-                : Container(
-                    color: AppColors.neutral200,
-                    child: const Icon(Icons.image, color: AppColors.neutral500),
-                  ),
+              ),
+              if (isVideo)
+                const Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Icon(Icons.play_arrow, color: Colors.white, size: 18),
+                ),
+              const Positioned(
+                top: 6,
+                left: 6,
+                child: Icon(Icons.bookmark, color: Colors.white, size: 14),
+              ),
+            ],
           ),
         );
       },
@@ -782,5 +902,78 @@ class _ProfileScreenState extends State<ProfileScreen>
         );
       },
     );
+  }
+}
+
+// ── Saved post detail screen using the unified FeedPostCard ──────────────────
+
+class _SavedPostDetailScreen extends StatelessWidget {
+  final Map<String, dynamic> post;
+  const _SavedPostDetailScreen({required this.post});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text(
+          'Post',
+          style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.onSurface),
+        ),
+      ),
+      body: BlocBuilder<AuthBloc, AuthState>(
+        builder: (context, authState) {
+          final currentUserId =
+              authState is AuthAuthenticated ? authState.user.uid : '';
+          final currentUsername =
+              authState is AuthAuthenticated ? authState.user.username : '';
+          final currentAvatar =
+              authState is AuthAuthenticated ? authState.user.profileImageUrl : '';
+
+          return SingleChildScrollView(
+            child: FeedPostCard(
+              post: _normalizePostMap(post),
+              currentUserId: currentUserId,
+              currentUsername: currentUsername,
+              currentAvatar: currentAvatar,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Converts the backend FeedPostResponse map to the field names FeedPostCard expects.
+  Map<String, dynamic> _normalizePostMap(Map<String, dynamic> raw) {
+    final media = (raw['media'] as List? ?? []);
+    final mediaTypeStr = raw['media_type'] as String? ?? 'image';
+    final imageUrls = media
+        .where((m) => m['media_type'] == 'image')
+        .map<String>((m) => m['media_url'] as String)
+        .toList();
+    final videoUrls = media
+        .where((m) => m['media_type'] == 'video')
+        .map<String>((m) => m['media_url'] as String)
+        .toList();
+    final thumbnailUrls = media
+        .map((m) => m['thumbnail_url'] as String?)
+        .where((t) => t != null && t.isNotEmpty)
+        .cast<String>()
+        .toList();
+
+    return {
+      ...raw,
+      'imageUrls': imageUrls,
+      'videoUrls': videoUrls,
+      'thumbnailUrls': thumbnailUrls,
+      'mediaType': mediaTypeStr,
+      'createdAt': DateTime.tryParse(raw['created_at'] as String? ?? '') ?? DateTime.now(),
+    };
   }
 }

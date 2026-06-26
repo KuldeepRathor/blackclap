@@ -55,24 +55,25 @@ class ApiService {
 
     HttpLogger.logRequest(method, url, headers: defaultHeaders, body: body);
 
+    const timeout = Duration(seconds: 10);
     final startTime = DateTime.now();
     try {
       http.Response response;
       switch (method) {
         case 'GET':
-          response = await http.get(url, headers: defaultHeaders);
+          response = await http.get(url, headers: defaultHeaders).timeout(timeout);
           break;
         case 'POST':
-          response = await http.post(url, headers: defaultHeaders, body: body);
+          response = await http.post(url, headers: defaultHeaders, body: body).timeout(timeout);
           break;
         case 'PATCH':
-          response = await http.patch(url, headers: defaultHeaders, body: body);
+          response = await http.patch(url, headers: defaultHeaders, body: body).timeout(timeout);
           break;
         case 'PUT':
-          response = await http.put(url, headers: defaultHeaders, body: body);
+          response = await http.put(url, headers: defaultHeaders, body: body).timeout(timeout);
           break;
         case 'DELETE':
-          response = await http.delete(url, headers: defaultHeaders);
+          response = await http.delete(url, headers: defaultHeaders).timeout(timeout);
           break;
         default:
           throw Exception('Unsupported HTTP method: $method');
@@ -205,6 +206,26 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> followUser(String username) async {
+    final url = Uri.parse(AppUrl.followUser(username));
+    final response = await _sendRequest('POST', url, requireAuth: true);
+    if (response.statusCode == 200) {
+      return json.decode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception(_parseError(response));
+    }
+  }
+
+  Future<Map<String, dynamic>> unfollowUser(String username) async {
+    final url = Uri.parse(AppUrl.unfollowUser(username));
+    final response = await _sendRequest('DELETE', url, requireAuth: true);
+    if (response.statusCode == 200) {
+      return json.decode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception(_parseError(response));
+    }
+  }
+
   // --- Generic helpers for service classes ---
 
   Future<List<dynamic>> getList(String path) async {
@@ -233,6 +254,24 @@ class ApiService {
     if (response.statusCode == 200 || response.statusCode == 201) {
       return json.decode(response.body) as Map<String, dynamic>;
     } else {
+      throw Exception(_parseError(response));
+    }
+  }
+
+  Future<Map<String, dynamic>> get(String path) async {
+    final url = Uri.parse('${AppUrl.baseUrl}$path');
+    final response = await _sendRequest('GET', url, requireAuth: true);
+    if (response.statusCode == 200) {
+      return json.decode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception(_parseError(response));
+    }
+  }
+
+  Future<void> delete(String path) async {
+    final url = Uri.parse('${AppUrl.baseUrl}$path');
+    final response = await _sendRequest('DELETE', url, requireAuth: true);
+    if (response.statusCode != 200 && response.statusCode != 204) {
       throw Exception(_parseError(response));
     }
   }
