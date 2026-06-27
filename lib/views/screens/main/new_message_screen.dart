@@ -12,6 +12,7 @@ import '../../../models/user_model.dart';
 import '../../../repositories/chat_repository.dart';
 import '../../../services/api_service.dart';
 import '../../../services/search_api_service.dart';
+import '../../../utils/theme_colors.dart';
 
 class NewMessageScreen extends StatefulWidget {
   const NewMessageScreen({super.key});
@@ -110,14 +111,12 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        title: const Text(
+        title: Text(
           'New Message',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: AppColors.onSurface,
+            color: context.primaryText,
           ),
         ),
         bottom: PreferredSize(
@@ -128,21 +127,20 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
               controller: _searchController,
               autofocus: true,
               onChanged: _onQueryChanged,
-              style: const TextStyle(color: AppColors.onSurface),
+              style: TextStyle(color: context.primaryText),
               decoration: InputDecoration(
                 hintText: 'Search people…',
-                hintStyle:
-                    const TextStyle(color: AppColors.neutral300),
-                prefixIcon: const Icon(
+                hintStyle: TextStyle(color: context.mutedText),
+                prefixIcon: Icon(
                   Icons.search,
-                  color: AppColors.neutral300,
+                  color: context.mutedText,
                   size: 20,
                 ),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.clear,
-                          color: AppColors.neutral300,
+                          color: context.mutedText,
                           size: 18,
                         ),
                         onPressed: () {
@@ -152,7 +150,7 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
                       )
                     : null,
                 filled: true,
-                fillColor: AppColors.surfaceVariant,
+                fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                 contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16, vertical: 10),
                 border: OutlineInputBorder(
@@ -181,17 +179,16 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
     final query = _searchController.text.trim();
 
     if (query.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.person_search_outlined,
-                size: 72, color: AppColors.neutral500),
-            SizedBox(height: 16),
+                size: 72, color: context.iconColor),
+            const SizedBox(height: 16),
             Text(
               'Search for people to message',
-              style: TextStyle(
-                  color: AppColors.neutral300, fontSize: 15),
+              style: TextStyle(color: context.mutedText, fontSize: 15),
             ),
           ],
         ),
@@ -214,8 +211,7 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
             const SizedBox(height: 10),
             Text(
               _error!,
-              style:
-                  const TextStyle(color: AppColors.neutral200, fontSize: 14),
+              style: TextStyle(color: context.secondaryText, fontSize: 14),
             ),
             const SizedBox(height: 12),
             TextButton(
@@ -228,10 +224,10 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
     }
 
     if (_results.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
           'No people found',
-          style: TextStyle(color: AppColors.neutral300, fontSize: 15),
+          style: TextStyle(color: context.mutedText, fontSize: 15),
         ),
       );
     }
@@ -247,7 +243,7 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
               const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           leading: CircleAvatar(
             radius: 24,
-            backgroundColor: AppColors.neutral500,
+            backgroundColor: context.shimmerBase,
             backgroundImage: user.profileImageUrl.isNotEmpty
                 ? CachedNetworkImageProvider(user.profileImageUrl)
                 : null,
@@ -265,8 +261,8 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
           ),
           title: Text(
             user.username,
-            style: const TextStyle(
-              color: AppColors.onSurface,
+            style: TextStyle(
+              color: context.primaryText,
               fontWeight: FontWeight.w600,
               fontSize: 15,
             ),
@@ -274,8 +270,7 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
           subtitle: user.fullName.isNotEmpty
               ? Text(
                   user.fullName,
-                  style:
-                      const TextStyle(color: AppColors.neutral300, fontSize: 13),
+                  style: TextStyle(color: context.mutedText, fontSize: 13),
                 )
               : null,
           trailing: isOpening
@@ -287,10 +282,10 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
                     color: AppColors.accent,
                   ),
                 )
-              : const Icon(
+              : Icon(
                   Icons.arrow_forward_ios,
                   size: 14,
-                  color: AppColors.neutral400,
+                  color: context.iconColor,
                 ),
           onTap: isOpening ? null : () => _openDm(user),
         );

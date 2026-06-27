@@ -8,7 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../blocs/search/search_bloc.dart';
 import '../../../constants/color_constants.dart';
-import '../../../models/post_model.dart';
+import '../../../utils/theme_colors.dart';
 import '../../../models/user_model.dart';
 import '../../../services/api_service.dart';
 import '../../../services/post_api_service.dart';
@@ -146,9 +146,7 @@ class _DiscoverViewState extends State<_DiscoverView>
           final isSearching = state is! SearchBrowsing;
 
           return Scaffold(
-            backgroundColor: AppColors.background,
             appBar: AppBar(
-              backgroundColor: AppColors.background,
               title: const Text(
                 'Discover',
                 style: TextStyle(
@@ -165,7 +163,7 @@ class _DiscoverViewState extends State<_DiscoverView>
                       TabBar(
                         controller: _searchTabController,
                         labelColor: AppColors.accent,
-                        unselectedLabelColor: AppColors.neutral200,
+                        unselectedLabelColor: context.secondaryText,
                         indicatorColor: AppColors.accent,
                         tabs: const [
                           Tab(text: 'All'),
@@ -207,7 +205,7 @@ class _DiscoverViewState extends State<_DiscoverView>
             borderSide: BorderSide.none,
           ),
           filled: true,
-          fillColor: AppColors.neutral600,
+          fillColor: context.dividerColor,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 20,
             vertical: 12,
@@ -236,12 +234,12 @@ class _DiscoverViewState extends State<_DiscoverView>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.error_outline, size: 48, color: AppColors.neutral300),
+                Icon(Icons.error_outline, size: 48, color: context.mutedText),
                 const SizedBox(height: 12),
                 Text(
                   message,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppColors.neutral200),
+                  style: TextStyle(color: context.secondaryText),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
@@ -363,7 +361,7 @@ class _DiscoverViewState extends State<_DiscoverView>
             const SizedBox(height: 6),
             Text(
               user.username,
-              style: const TextStyle(fontSize: 11, color: AppColors.neutral100),
+              style: TextStyle(fontSize: 11, color: context.primaryText),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
@@ -377,7 +375,7 @@ class _DiscoverViewState extends State<_DiscoverView>
   Widget _buildUserListTile(BuildContext context, UserModel user) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      color: AppColors.neutral700,
+      color: context.shimmerBase,
       child: ListTile(
         leading: _buildAvatar(user.profileImageUrl, user.fullName, radius: 20),
         title: Text(
@@ -388,11 +386,11 @@ class _DiscoverViewState extends State<_DiscoverView>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('@${user.username}',
-                style: TextStyle(color: AppColors.neutral200)),
+                style: TextStyle(color: context.secondaryText)),
             if (user.bio.isNotEmpty)
               Text(
                 user.bio,
-                style: TextStyle(color: AppColors.neutral300, fontSize: 12),
+                style: TextStyle(color: context.mutedText, fontSize: 12),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -402,15 +400,15 @@ class _DiscoverViewState extends State<_DiscoverView>
             ? OutlinedButton(
                 onPressed: null,
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppColors.neutral400),
+                  side: BorderSide(color: context.iconColor),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   textStyle: const TextStyle(fontSize: 11),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: const Text('Following',
-                    style: TextStyle(color: AppColors.neutral200)),
+                child: Text('Following',
+                    style: TextStyle(color: context.secondaryText)),
               )
             : null,
         onTap: () => context.push('/profile/${user.username}'),
@@ -446,10 +444,10 @@ class _DiscoverViewState extends State<_DiscoverView>
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 16,
-              color: AppColors.neutral100,
+              color: context.primaryText,
             ),
           ),
           if (onViewAll != null)
@@ -472,11 +470,11 @@ class _DiscoverViewState extends State<_DiscoverView>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.search_off, size: 48, color: AppColors.neutral400),
+            Icon(Icons.search_off, size: 48, color: context.iconColor),
             const SizedBox(height: 12),
             Text(
               message,
-              style: const TextStyle(color: AppColors.neutral200),
+              style: TextStyle(color: context.secondaryText),
             ),
           ],
         ),
@@ -496,10 +494,10 @@ class _DiscoverViewState extends State<_DiscoverView>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: AppColors.neutral400),
+            Icon(Icons.error_outline, size: 48, color: context.iconColor),
             const SizedBox(height: 12),
-            const Text('Failed to load posts',
-                style: TextStyle(color: AppColors.neutral200)),
+            Text('Failed to load posts',
+                style: TextStyle(color: context.secondaryText)),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadBrowsePosts,
@@ -554,14 +552,14 @@ class _DiscoverViewState extends State<_DiscoverView>
                     width: double.infinity,
                     placeholder: (_, __) => Container(
                       height: 120,
-                      color: AppColors.neutral600,
+                      color: context.dividerColor,
                       child: const Center(child: CircularProgressIndicator()),
                     ),
                     errorWidget: (_, __, ___) => Container(
                       height: 120,
-                      color: AppColors.neutral600,
-                      child: const Icon(Icons.image_not_supported,
-                          color: AppColors.neutral400),
+                      color: context.dividerColor,
+                      child: Icon(Icons.image_not_supported,
+                          color: context.iconColor),
                     ),
                   ),
                   if ((post['caption'] as String?)?.isNotEmpty == true)

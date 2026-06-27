@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../constants/color_constants.dart';
 import '../../models/comment_api_model.dart';
+import '../../utils/theme_colors.dart';
 import '../../models/post_model.dart';
 import '../../services/api_service.dart';
 import '../../services/interaction_api_service.dart';
@@ -388,15 +389,15 @@ class _CommentsSheetState extends State<CommentsSheet> {
       child: FractionallySizedBox(
         heightFactor: 0.92,
         child: Container(
-          decoration: const BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: Column(
             children: [
               _buildHandle(),
               _buildHeader(),
-              const Divider(color: AppColors.neutral600, height: 1),
+              Divider(color: context.dividerColor, height: 1),
               Expanded(
                 child: _loadingInitial
                     ? const Center(
@@ -411,7 +412,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                             itemBuilder: (_, i) => _buildItem(items[i]),
                           ),
               ),
-              const Divider(color: AppColors.neutral600, height: 1),
+              Divider(color: context.dividerColor, height: 1),
               if (_replyingToUsername != null) _buildReplyBanner(),
               _buildInput(context),
             ],
@@ -426,17 +427,17 @@ class _CommentsSheetState extends State<CommentsSheet> {
         width: 40,
         height: 4,
         decoration: BoxDecoration(
-            color: AppColors.neutral600, borderRadius: BorderRadius.circular(2)),
+            color: context.dividerColor, borderRadius: BorderRadius.circular(2)),
       );
 
   Widget _buildHeader() => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Text(
           'Comments${_localCount > 0 ? ' · $_localCount' : ''}',
-          style: const TextStyle(
+          style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 15,
-              color: AppColors.onSurface),
+              color: context.primaryText),
         ),
       );
 
@@ -444,17 +445,17 @@ class _CommentsSheetState extends State<CommentsSheet> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.chat_bubble_outline_rounded,
-                size: 56, color: AppColors.neutral600),
+            Icon(Icons.chat_bubble_outline_rounded,
+                size: 56, color: context.iconColor),
             const SizedBox(height: 16),
-            const Text('No comments yet',
+            Text('No comments yet',
                 style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.onSurface)),
+                    color: context.primaryText)),
             const SizedBox(height: 8),
-            const Text('Be the first to comment!',
-                style: TextStyle(fontSize: 13, color: AppColors.neutral400)),
+            Text('Be the first to comment!',
+                style: TextStyle(fontSize: 13, color: context.mutedText)),
           ],
         ),
       );
@@ -479,8 +480,8 @@ class _CommentsSheetState extends State<CommentsSheet> {
                 _replyingToCommentId = null;
                 _replyingToUsername = null;
               }),
-              child: const Icon(Icons.close,
-                  color: AppColors.neutral400, size: 18),
+              child: Icon(Icons.close,
+                  color: context.mutedText, size: 18),
             ),
           ],
         ),
@@ -506,7 +507,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
               child: Container(
                 constraints: const BoxConstraints(maxHeight: 120),
                 decoration: BoxDecoration(
-                  color: AppColors.neutral600,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: TextField(
@@ -514,10 +515,10 @@ class _CommentsSheetState extends State<CommentsSheet> {
                   focusNode: _focusNode,
                   maxLines: null,
                   style:
-                      const TextStyle(color: AppColors.onSurface, fontSize: 14),
-                  decoration: const InputDecoration(
+                      TextStyle(color: context.primaryText, fontSize: 14),
+                  decoration: InputDecoration(
                     hintText: 'Add a comment…',
-                    hintStyle: TextStyle(color: AppColors.neutral400),
+                    hintStyle: TextStyle(color: context.mutedText),
                     border: InputBorder.none,
                     contentPadding:
                         EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -605,8 +606,8 @@ class _CommentsSheetState extends State<CommentsSheet> {
               children: [
                 RichText(
                   text: TextSpan(
-                    style: const TextStyle(
-                        color: AppColors.onSurface, fontSize: 13.5, height: 1.4),
+                    style: TextStyle(
+                        color: context.primaryText, fontSize: 13.5, height: 1.4),
                     children: [
                       TextSpan(
                           text: '${comment.username} ',
@@ -619,16 +620,16 @@ class _CommentsSheetState extends State<CommentsSheet> {
                 Row(
                   children: [
                     Text(_timeAgo(comment.createdAt),
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.neutral400)),
+                        style: TextStyle(
+                            fontSize: 11, color: context.mutedText)),
                     const SizedBox(width: 14),
                     GestureDetector(
                       onTap: () =>
                           _startReply(comment.id, comment.username),
-                      child: const Text('Reply',
+                      child: Text('Reply',
                           style: TextStyle(
                               fontSize: 11,
-                              color: AppColors.neutral400,
+                              color: context.mutedText,
                               fontWeight: FontWeight.w600)),
                     ),
                     if (isOwn) ...[
@@ -651,15 +652,15 @@ class _CommentsSheetState extends State<CommentsSheet> {
                     child: Row(
                       children: [
                         Container(
-                            width: 24, height: 1, color: AppColors.neutral400),
+                            width: 24, height: 1, color: context.dividerColor),
                         const SizedBox(width: 8),
                         Text(
                           thread.isExpanded
                               ? 'Hide replies'
                               : 'View $count ${count == 1 ? 'reply' : 'replies'}',
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 11.5,
-                              color: AppColors.neutral400,
+                              color: context.mutedText,
                               fontWeight: FontWeight.w600),
                         ),
                         if (thread.loadingReplies && !thread.isExpanded) ...[
@@ -702,8 +703,8 @@ class _CommentsSheetState extends State<CommentsSheet> {
               children: [
                 RichText(
                   text: TextSpan(
-                    style: const TextStyle(
-                        color: AppColors.onSurface, fontSize: 13, height: 1.4),
+                    style: TextStyle(
+                        color: context.primaryText, fontSize: 13, height: 1.4),
                     children: [
                       TextSpan(
                           text: '${reply.username} ',
@@ -716,15 +717,15 @@ class _CommentsSheetState extends State<CommentsSheet> {
                 Row(
                   children: [
                     Text(_timeAgo(reply.createdAt),
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.neutral400)),
+                        style: TextStyle(
+                            fontSize: 11, color: context.mutedText)),
                     const SizedBox(width: 14),
                     GestureDetector(
                       onTap: () => _startReply(parentId, reply.username),
-                      child: const Text('Reply',
+                      child: Text('Reply',
                           style: TextStyle(
                               fontSize: 11,
-                              color: AppColors.neutral400,
+                              color: context.mutedText,
                               fontWeight: FontWeight.w600)),
                     ),
                     if (isOwn) ...[
@@ -755,7 +756,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
           padding: const EdgeInsets.only(left: 56, top: 4, bottom: 10),
           child: Row(
             children: [
-              Container(width: 24, height: 1, color: AppColors.neutral400),
+              Container(width: 24, height: 1, color: context.dividerColor),
               const SizedBox(width: 8),
               const Text(
                 'Load more replies',
