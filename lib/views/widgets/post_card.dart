@@ -7,6 +7,7 @@ import '../../constants/color_constants.dart';
 import '../../models/post_model.dart';
 import '../../services/api_service.dart';
 import '../../services/interaction_api_service.dart';
+import '../../services/post_api_service.dart';
 import 'comments_sheet.dart';
 
 class PostCard extends StatefulWidget {
@@ -46,6 +47,7 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
   late Animation<double> _likeScale;
 
   final InteractionApiService _service = InteractionApiService(ApiService());
+  final PostApiService _postApiService = PostApiService(ApiService());
 
   @override
   void initState() {
@@ -187,6 +189,112 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
     );
   }
 
+  bool get _isOwnPost => widget.post.uid == widget.currentUserId;
+
+  void _showPostMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.neutral500,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            if (_isOwnPost)
+              ListTile(
+                leading: const Icon(Icons.delete_outline_rounded,
+                    color: AppColors.error),
+                title: const Text(
+                  'Delete post',
+                  style: TextStyle(
+                      color: AppColors.error, fontWeight: FontWeight.w600),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmDelete(context);
+                },
+              )
+            else ...[
+              ListTile(
+                leading: const Icon(Icons.flag_outlined,
+                    color: AppColors.neutral200),
+                title: const Text('Report'),
+                onTap: () => Navigator.pop(context),
+              ),
+            ],
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete post',
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text(
+            'This will permanently delete your post. This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppColors.neutral400)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _deletePost(context);
+            },
+            child: const Text('Delete',
+                style: TextStyle(
+                    color: AppColors.error, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deletePost(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    try {
+      await _postApiService.deletePost(widget.post.id);
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Post deleted'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      navigator.pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   void _navigateToAuthorProfile(BuildContext context, String authorUsername) {
     if (authorUsername.isEmpty) return;
     // If the author is the current user, don't navigate (they can use the profile tab)
@@ -220,7 +328,14 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                 ],
               ),
             ),
-            const Icon(Icons.more_horiz, color: AppColors.neutral400, size: 20),
+            GestureDetector(
+              onTap: () => _showPostMenu(context),
+              child: const Padding(
+                padding: EdgeInsets.all(4),
+                child: Icon(Icons.more_horiz,
+                    color: AppColors.neutral400, size: 20),
+              ),
+            ),
           ],
         ),
       ),

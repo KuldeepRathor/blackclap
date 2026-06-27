@@ -268,6 +268,14 @@ class ApiService {
     }
   }
 
+  Future<void> postVoid(String path) async {
+    final url = Uri.parse('${AppUrl.baseUrl}$path');
+    final response = await _sendRequest('POST', url, requireAuth: true, body: '{}');
+    if (response.statusCode != 200 && response.statusCode != 201 && response.statusCode != 204) {
+      throw Exception(_parseError(response));
+    }
+  }
+
   Future<void> delete(String path) async {
     final url = Uri.parse('${AppUrl.baseUrl}$path');
     final response = await _sendRequest('DELETE', url, requireAuth: true);

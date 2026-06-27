@@ -108,6 +108,15 @@ class PostApiService {
     return list.cast<Map<String, dynamic>>();
   }
 
+  /// Fetch video posts for the reels feed, newest first.
+  Future<List<Map<String, dynamic>>> getReels({
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    final list = await _api.getList('/posts/reels?limit=$limit&offset=$offset');
+    return list.cast<Map<String, dynamic>>();
+  }
+
   /// Fetch the current user's saved posts.
   Future<List<Map<String, dynamic>>> getSavedPosts() async {
     final list = await _api.getList('/users/me/saved-posts');
@@ -121,6 +130,7 @@ class PostApiService {
     required String mediaType,
     required List<String> mediaUrls,
     String? thumbnailUrl,
+    List<String> taggedUserIds = const [],
   }) async {
     return await _api.post('/posts', {
       if (caption != null && caption.isNotEmpty) 'caption': caption,
@@ -128,6 +138,31 @@ class PostApiService {
       'media_type': mediaType,
       'media_urls': mediaUrls,
       if (thumbnailUrl != null) 'thumbnail_url': thumbnailUrl,
+      if (taggedUserIds.isNotEmpty) 'tagged_user_ids': taggedUserIds,
     });
+  }
+
+  /// Fetch posts where the current user has been tagged.
+  Future<List<Map<String, dynamic>>> getTaggedPosts() async {
+    final list = await _api.getList('/posts/me/tagged');
+    return list.cast<Map<String, dynamic>>();
+  }
+
+  /// Fetch posts where [username] has been tagged.
+  Future<List<Map<String, dynamic>>> getTaggedPostsByUsername(String username) async {
+    final list = await _api.getList('/posts/tagged/$username');
+    return list.cast<Map<String, dynamic>>();
+  }
+
+  /// Hard-delete (soft on backend) the post. Throws on 403/404.
+  Future<void> deletePost(String postId) async {
+    await _api.delete('/posts/$postId');
+  }
+
+  /// Record one view of a video post. Fire-and-forget — ignores errors.
+  Future<void> recordView(String postId) async {
+    try {
+      await _api.postVoid('/posts/$postId/view');
+    } catch (_) {}
   }
 }

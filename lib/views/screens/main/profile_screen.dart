@@ -7,7 +7,6 @@ import '../../../blocs/auth/auth_bloc.dart';
 import '../../../blocs/auth/auth_state.dart';
 import '../../../blocs/auth/auth_event.dart';
 import '../../../models/post_model.dart';
-import '../../../repositories/mock_data_service.dart';
 import '../../../repositories/post_repository.dart';
 import '../../../repositories/user_repository.dart';
 import '../../../services/api_service.dart';
@@ -28,10 +27,10 @@ class _ProfileScreenState extends State<ProfileScreen>
   late TabController _tabController;
   List<PostModel> _userPosts = [];
   List<Map<String, dynamic>> _savedPosts = [];
+  List<PostModel> _taggedPosts = [];
   bool _postsLoading = false;
   bool _savedLoading = false;
-  List<Map<String, dynamic>> _userReels = [];
-  List<Map<String, dynamic>> _taggedPosts = [];
+  bool _taggedLoading = false;
 
   final PostApiService _postApiService = PostApiService(ApiService());
 
@@ -51,8 +50,27 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   void _onTabChanged() {
+    if (_tabController.index == 2 && _taggedPosts.isEmpty && !_taggedLoading) {
+      _loadTaggedPosts();
+    }
     if (_tabController.index == 3 && _savedPosts.isEmpty && !_savedLoading) {
       _loadSavedPosts();
+    }
+  }
+
+  Future<void> _loadTaggedPosts() async {
+    if (!mounted) return;
+    setState(() => _taggedLoading = true);
+    try {
+      final raw = await _postApiService.getTaggedPosts();
+      if (mounted) {
+        setState(() => _taggedPosts =
+            raw.map((m) => PostModel.fromApiResponse(m)).toList());
+      }
+    } catch (_) {
+      if (mounted) setState(() => _taggedPosts = []);
+    } finally {
+      if (mounted) setState(() => _taggedLoading = false);
     }
   }
 
@@ -93,6 +111,10 @@ class _ProfileScreenState extends State<ProfileScreen>
       if (mounted) setState(() => _userPosts = []);
     }
 
+    if (_tabController.index == 2) {
+      setState(() => _taggedPosts = []);
+      await _loadTaggedPosts();
+    }
     if (_tabController.index == 3) {
       setState(() => _savedPosts = <Map<String, dynamic>>[]);
       await _loadSavedPosts();
@@ -104,15 +126,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     final userRepository = context.read<UserRepository>();
     final postRepository = context.read<PostRepository>();
     if (authState is AuthAuthenticated) {
-      // Mock data for reels/tagged/reposts
-      setState(() {
-        _userReels = MockDataService.getUserPosts(authState.user.uid).take(2).toList();
-        _taggedPosts = MockDataService.getPosts()
-            .where((post) => post['uid'] != authState.user.uid)
-            .take(3)
-            .toList();
-        _postsLoading = true;
-      });
+      setState(() => _postsLoading = true);
 
       // Fetch real posts from backend
       try {
@@ -156,9 +170,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         actions: [
           IconButton(
             icon: const Icon(Icons.add_box_outlined, color: AppColors.onSurface),
-            onPressed: () {
-              // Create post
-            },
+            onPressed: () => context.push('/create-post'),
           ),
           IconButton(
             icon: const Icon(Icons.menu, color: AppColors.onSurface),
@@ -397,9 +409,17 @@ class _ProfileScreenState extends State<ProfileScreen>
                       ? const Center(child: CircularProgressIndicator())
                       : _buildPostsGrid(_userPosts),
                   // Reels Grid
-                  _buildReelsGrid(_userReels),
+                  _postsLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _buildReelsGrid(
+                          _userPosts
+                              .where((p) => p.mediaType == MediaType.video)
+                              .toList(),
+                        ),
                   // Tagged Grid
-                  _buildTaggedGrid(_taggedPosts),
+                  _taggedLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _buildTaggedGrid(_taggedPosts),
                   // Saved Grid
                   _savedLoading
                       ? const Center(child: CircularProgressIndicator())
@@ -474,8 +494,8 @@ class _ProfileScreenState extends State<ProfileScreen>
         final hasMultiple = post.imageUrls.length > 1;
 
         return GestureDetector(
-          onTap: () {
-            Navigator.of(context, rootNavigator: true).push(
+          onTap: () async {
+            final deleted = await Navigator.of(context, rootNavigator: true).push<bool>(
               MaterialPageRoute(
                 builder: (_) => PostDetailScreen(
                   post: post,
@@ -493,6 +513,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                 ),
               ),
             );
+            if (deleted == true && mounted) {
+              setState(() => _userPosts.removeWhere((p) => p.id == post.id));
+            }
           },
           child: Stack(
             fit: StackFit.expand,
@@ -545,7 +568,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildReelsGrid(List<Map<String, dynamic>> reels) {
+  Widget _buildReelsGrid(List<PostModel> reels) {
     if (reels.isEmpty) {
       return const Center(
         child: Column(
@@ -556,6 +579,12 @@ class _ProfileScreenState extends State<ProfileScreen>
             Text(
               'No Reels Yet',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Your video posts will appear here.',
+              style: TextStyle(color: AppColors.neutral200),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -573,45 +602,94 @@ class _ProfileScreenState extends State<ProfileScreen>
       itemCount: reels.length,
       itemBuilder: (context, index) {
         final reel = reels[index];
-        final imageUrls = reel['imageUrls'] as List<dynamic>;
-        final imageUrl = imageUrls.isNotEmpty ? imageUrls[0] : '';
+        final thumbnailUrl = reel.thumbnailUrls.isNotEmpty
+            ? reel.thumbnailUrls[0]
+            : (reel.videoUrls.isNotEmpty ? reel.videoUrls[0] : '');
 
         return GestureDetector(
           onTap: () {
-            // Navigate to reel detail
+            _postApiService.recordView(reel.id);
+            Navigator.of(context, rootNavigator: true).push(
+              MaterialPageRoute(
+                builder: (_) => PostDetailScreen(
+                  post: reel,
+                  onLikeChanged: (isLiked, likesCount) {
+                    setState(() {
+                      final idx = _userPosts.indexWhere((p) => p.id == reel.id);
+                      if (idx != -1) {
+                        _userPosts[idx] = _userPosts[idx].copyWith(
+                          isLiked: isLiked,
+                          likesCount: likesCount,
+                        );
+                      }
+                    });
+                  },
+                ),
+              ),
+            );
           },
           child: Stack(
             fit: StackFit.expand,
             children: [
               Container(
-                color: AppColors.neutral600,
-                child: imageUrl.isNotEmpty
+                color: Colors.black,
+                child: thumbnailUrl.isNotEmpty
                     ? CachedNetworkImage(
-                        imageUrl: imageUrl,
+                        imageUrl: thumbnailUrl,
                         fit: BoxFit.cover,
-                        placeholder: (context, url) =>
-                            Container(color: AppColors.neutral200),
-                        errorWidget: (context, url, error) => Container(
-                          color: AppColors.neutral600,
-                          child: const Icon(
-                            Icons.video_library,
-                            color: AppColors.neutral500,
-                          ),
+                        placeholder: (_, __) =>
+                            Container(color: AppColors.neutral700),
+                        errorWidget: (_, __, ___) => Container(
+                          color: AppColors.neutral700,
+                          child: const Icon(Icons.videocam_off,
+                              color: AppColors.neutral500),
                         ),
                       )
                     : Container(
-                        color: AppColors.neutral600,
-                        child: const Icon(
-                          Icons.video_library,
-                          color: AppColors.neutral500,
-                        ),
+                        color: AppColors.neutral700,
+                        child: const Icon(Icons.play_circle_outline,
+                            color: AppColors.neutral500, size: 32),
                       ),
               ),
-              // Play icon overlay
-              const Positioned(
-                bottom: 8,
-                left: 8,
-                child: Icon(Icons.play_arrow, color: AppColors.onAccent, size: 20),
+              // Gradient scrim at bottom for readability
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: 40,
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.transparent, Colors.black54],
+                    ),
+                  ),
+                ),
+              ),
+              // Views count
+              Positioned(
+                bottom: 5,
+                left: 5,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.play_arrow_rounded,
+                        color: Colors.white, size: 14),
+                    const SizedBox(width: 2),
+                    Text(
+                      _formatViews(reel.viewsCount),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        shadows: [
+                          Shadow(blurRadius: 4, color: Colors.black54),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -620,7 +698,19 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildTaggedGrid(List<Map<String, dynamic>> tagged) {
+  String _formatViews(int count) {
+    if (count >= 1000000) {
+      final m = count / 1000000;
+      return '${m % 1 == 0 ? m.toInt() : m.toStringAsFixed(1)}M';
+    }
+    if (count >= 1000) {
+      final k = count / 1000;
+      return '${k % 1 == 0 ? k.toInt() : k.toStringAsFixed(1)}K';
+    }
+    return count.toString();
+  }
+
+  Widget _buildTaggedGrid(List<PostModel> tagged) {
     if (tagged.isEmpty) {
       return const Center(
         child: Column(
@@ -653,33 +743,72 @@ class _ProfileScreenState extends State<ProfileScreen>
       itemCount: tagged.length,
       itemBuilder: (context, index) {
         final post = tagged[index];
-        final imageUrls = post['imageUrls'] as List<dynamic>;
-        final imageUrl = imageUrls.isNotEmpty ? imageUrls[0] : '';
+        final isVideo = post.mediaType == MediaType.video;
+        final thumbnailUrl = isVideo
+            ? (post.thumbnailUrls.isNotEmpty ? post.thumbnailUrls[0] : '')
+            : (post.imageUrls.isNotEmpty ? post.imageUrls[0] : '');
 
         return GestureDetector(
           onTap: () {
-            // Navigate to post detail
+            Navigator.of(context, rootNavigator: true).push(
+              MaterialPageRoute(
+                builder: (_) => PostDetailScreen(
+                  post: post,
+                  onLikeChanged: (isLiked, likesCount) {
+                    setState(() {
+                      final idx = _taggedPosts.indexWhere((p) => p.id == post.id);
+                      if (idx != -1) {
+                        _taggedPosts[idx] = _taggedPosts[idx].copyWith(
+                          isLiked: isLiked,
+                          likesCount: likesCount,
+                        );
+                      }
+                    });
+                  },
+                ),
+              ),
+            );
           },
-          child: Container(
-            color: AppColors.neutral600,
-            child: imageUrl.isNotEmpty
-                ? CachedNetworkImage(
-                    imageUrl: imageUrl,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) =>
-                        Container(color: AppColors.neutral200),
-                    errorWidget: (context, url, error) => Container(
-                      color: AppColors.neutral600,
-                      child: const Icon(
-                        Icons.image_not_supported,
-                        color: AppColors.neutral500,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Container(
+                color: AppColors.neutral600,
+                child: thumbnailUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: thumbnailUrl,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                            color: AppColors.neutral600),
+                        errorWidget: (context, url, error) => Container(
+                          color: AppColors.neutral600,
+                          child: Icon(
+                            isVideo ? Icons.videocam_off : Icons.image_not_supported,
+                            color: AppColors.neutral500,
+                          ),
+                        ),
+                      )
+                    : Container(
+                        color: AppColors.neutral800,
+                        child: Icon(
+                          isVideo ? Icons.play_circle_outline : Icons.image,
+                          color: AppColors.neutral500,
+                          size: 32,
+                        ),
                       ),
-                    ),
-                  )
-                : Container(
-                    color: AppColors.neutral200,
-                    child: const Icon(Icons.image, color: AppColors.neutral500),
-                  ),
+              ),
+              if (isVideo)
+                const Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Icon(Icons.play_arrow, color: Colors.white, size: 18),
+                ),
+              const Positioned(
+                bottom: 6,
+                left: 6,
+                child: Icon(Icons.person_pin, color: Colors.white70, size: 14),
+              ),
+            ],
           ),
         );
       },
