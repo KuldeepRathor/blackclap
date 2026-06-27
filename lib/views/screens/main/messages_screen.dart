@@ -6,7 +6,6 @@ import '../../../blocs/auth/auth_bloc.dart';
 import '../../../blocs/auth/auth_state.dart';
 import '../../../blocs/chat/conversations_bloc.dart';
 import '../../../constants/color_constants.dart';
-import '../../../repositories/chat_repository.dart';
 import '../../../utils/theme_colors.dart';
 import '../../widgets/conversation_tile.dart';
 
@@ -18,14 +17,8 @@ class MessagesScreen extends StatelessWidget {
     final authState = context.read<AuthBloc>().state;
     final currentUserId =
         authState is AuthAuthenticated ? authState.user.uid : '';
-
-    return BlocProvider<ConversationsBloc>(
-      create: (ctx) => ConversationsBloc(
-        repository: ctx.read<ChatRepository>(),
-        currentUserId: currentUserId,
-      )..add(const ConversationsLoadRequested()),
-      child: _MessagesView(currentUserId: currentUserId),
-    );
+    // ConversationsBloc is provided by MainNavigationWrapper — no local BlocProvider needed.
+    return _MessagesView(currentUserId: currentUserId);
   }
 }
 

@@ -262,6 +262,10 @@ class ChatBloc extends Bloc<ChatBlocEvent, ChatState> {
       if (domain.userId == currentUserId) return;
       if (s is! ChatLoaded) return;
       emit(s.copyWith(otherTyping: domain.isTyping));
+    } else if (domain is PresenceEvent) {
+      if (domain.userId == currentUserId) return;
+      if (s is! ChatLoaded) return;
+      emit(s.copyWith(isOtherOnline: domain.online));
     }
   }
 }
