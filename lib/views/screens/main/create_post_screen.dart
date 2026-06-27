@@ -356,7 +356,12 @@ class _CreatePostScreenState extends State<CreatePostScreen>
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios_new_rounded,
             color: AppColors.onSurface, size: 20),
-        onPressed: isLoading ? null : _resetForm,
+        onPressed: isLoading
+            ? null
+            : () {
+                _resetForm();
+                Navigator.of(context).pop();
+              },
       ),
       title: const Text(
         'New Post',

@@ -1,11 +1,13 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../constants/color_constants.dart';
 import '../../../models/post_model.dart';
 import '../../../models/user_model.dart';
+import '../../../repositories/chat_repository.dart';
 import '../../../services/api_service.dart';
 import '../../../services/post_api_service.dart';
 import 'post_detail_screen.dart';
@@ -131,11 +133,29 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
     );
   }
 
-  void _openDM() {
-    // TODO: navigate to DM with this user when messaging is wired up
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Message ${widget.username} — coming soon')),
-    );
+  bool _openingDm = false;
+
+  Future<void> _openDM() async {
+    final user = _user;
+    if (user == null || _openingDm) return;
+    setState(() => _openingDm = true);
+    try {
+      final conversation =
+          await context.read<ChatRepository>().openOrCreateDm(user.uid);
+      if (!mounted) return;
+      context.push('/chat/${conversation.id}', extra: conversation);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not open chat: ${e.toString().replaceFirst('Exception: ', '')}',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _openingDm = false);
+    }
   }
 
   @override
@@ -282,7 +302,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
                           const SizedBox(width: 8),
                           Expanded(
                             child: OutlinedButton(
-                              onPressed: _openDM,
+                              onPressed: _openingDm ? null : _openDM,
                               style: OutlinedButton.styleFrom(
                                 side: BorderSide(color: AppColors.neutral400),
                                 shape: RoundedRectangleBorder(
@@ -290,14 +310,23 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
                                 ),
                                 padding: const EdgeInsets.symmetric(vertical: 10),
                               ),
-                              child: const Text(
-                                'Message',
-                                style: TextStyle(
-                                  color: AppColors.onSurface,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                ),
-                              ),
+                              child: _openingDm
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: AppColors.onSurface,
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Message',
+                                      style: TextStyle(
+                                        color: AppColors.onSurface,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
+                                    ),
                             ),
                           ),
                           const SizedBox(width: 8),

@@ -10,9 +10,24 @@ class InteractionApiService {
   Future<Map<String, dynamic>> toggleSave(String postId) =>
       _api.post('/posts/$postId/save', {});
 
-  Future<Map<String, dynamic>> getComments(String postId,
-          {int limit = 20, int offset = 0}) =>
-      _api.get('/posts/$postId/comments?limit=$limit&offset=$offset');
+  Future<Map<String, dynamic>> getComments(
+    String postId, {
+    int limit = 20,
+    String? afterCursor,
+  }) {
+    final params = 'limit=$limit${afterCursor != null ? '&after_cursor=${Uri.encodeComponent(afterCursor)}' : ''}';
+    return _api.get('/posts/$postId/comments?$params');
+  }
+
+  Future<Map<String, dynamic>> getReplies(
+    String postId,
+    String commentId, {
+    int limit = 10,
+    String? afterCursor,
+  }) {
+    final params = 'limit=$limit${afterCursor != null ? '&after_cursor=${Uri.encodeComponent(afterCursor)}' : ''}';
+    return _api.get('/posts/$postId/comments/$commentId/replies?$params');
+  }
 
   Future<Map<String, dynamic>> addComment(String postId, String content,
           {String? parentId}) =>

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../blocs/auth/auth_bloc.dart';
 import '../../../blocs/auth/auth_state.dart';
@@ -30,6 +31,11 @@ class _FeedScreenState extends State<FeedScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.add_box_outlined, color: AppColors.onSurface),
+          tooltip: 'Create post',
+          onPressed: () => context.push('/create-post'),
+        ),
         title: const Text(
           'Blackclap',
           style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.accent),
@@ -39,10 +45,10 @@ class _FeedScreenState extends State<FeedScreen> {
             icon: const Icon(Icons.favorite_outline, color: AppColors.onSurface),
             onPressed: () {},
           ),
-          IconButton(
-            icon: const Icon(Icons.chat_bubble_outline, color: AppColors.onSurface),
-            onPressed: () {},
-          ),
+          // IconButton(
+          //   icon: const Icon(Icons.chat_bubble_outline, color: AppColors.onSurface),
+          //   onPressed: () {},
+          // ),
         ],
       ),
       body: BlocBuilder<PostsBloc, PostsState>(

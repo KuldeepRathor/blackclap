@@ -71,6 +71,16 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
         );
       }
       emit(PostsCreateSuccess());
+      // The feed shares this bloc, so leaving it on PostsCreateSuccess strands
+      // FeedScreen's BlocBuilder on its default (infinite spinner) branch.
+      // Re-fetch so the new post shows and the bloc returns to a list state.
+      try {
+        final posts = await _postRepository.getPosts();
+        emit(PostsLoaded(posts: posts.map((p) => p.toMap()).toList()));
+      } catch (_) {
+        // Refresh failed — leave success state; the feed reloads on next open
+        // or pull-to-refresh rather than surfacing a misleading error.
+      }
     } catch (e) {
       emit(PostsCreateError(message: e.toString()));
     }
