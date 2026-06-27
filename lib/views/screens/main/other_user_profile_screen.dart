@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../constants/color_constants.dart';
 import '../../../models/post_model.dart';
@@ -222,8 +223,18 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
                             ),
                           ),
                           _buildStatColumn(_posts.length.toString(), 'Posts'),
-                          _buildStatColumn(_followersCount.toString(), 'Followers'),
-                          _buildStatColumn(_followingCount.toString(), 'Following'),
+                          _buildStatColumn(
+                            _followersCount.toString(),
+                            'Followers',
+                            onTap: () => context.push(
+                                '/follow-list/${widget.username}?tab=0'),
+                          ),
+                          _buildStatColumn(
+                            _followingCount.toString(),
+                            'Following',
+                            onTap: () => context.push(
+                                '/follow-list/${widget.username}?tab=1'),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 12),
@@ -389,16 +400,19 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
     );
   }
 
-  Widget _buildStatColumn(String count, String label) {
-    return Column(
-      children: [
-        Text(
-          count,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.onSurface),
-        ),
-        const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 13, color: AppColors.neutral200)),
-      ],
+  Widget _buildStatColumn(String count, String label, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Text(
+            count,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+          ),
+          const SizedBox(height: 2),
+          Text(label, style: const TextStyle(fontSize: 13, color: AppColors.neutral200)),
+        ],
+      ),
     );
   }
 
