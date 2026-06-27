@@ -5,6 +5,7 @@ import '../../../blocs/auth/auth_bloc.dart';
 import '../../../blocs/auth/auth_event.dart';
 import '../../../blocs/auth/auth_state.dart';
 import '../../../constants/color_constants.dart';
+import '../../../utils/theme_colors.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -44,12 +45,11 @@ class _SignupScreenState extends State<SignupScreen> {
       },
       builder: (context, state) {
         return Scaffold(
-          backgroundColor: AppColors.background,
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
+              icon: Icon(Icons.arrow_back, color: context.primaryText),
               onPressed: () => context.go('/login'),
             ),
           ),
@@ -71,7 +71,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     'Create your account',
                     style: TextStyle(
                       fontSize: 16,
-                      color: AppColors.onSurface,
+                      color: context.primaryText,
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -221,9 +221,9 @@ class _SignupScreenState extends State<SignupScreen> {
                       context.go('/login');
                     },
                     child: RichText(
-                      text: const TextSpan(
+                      text: TextSpan(
                         text: 'Already have an account? ',
-                        style: TextStyle(color: AppColors.onSurface),
+                        style: TextStyle(color: context.primaryText),
                         children: [
                           TextSpan(
                             text: 'Login',

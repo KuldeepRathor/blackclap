@@ -7,7 +7,7 @@ class AppColors {
   static const Color primaryDark = Color(0xFF000000); // Pure black
 
   // Neutral Greys - Dark Theme Support
-  static const Color neutral50 = Color(0xFFE5E5E5); 
+  static const Color neutral50 = Color(0xFFE5E5E5);
   static const Color neutral100 = Color(0xFFD4D4D4);
   static const Color neutral200 = Color(0xFFA3A3A3);
   static const Color neutral300 = Color(0xFF737373);
@@ -33,10 +33,19 @@ class AppColors {
   static const Color secondaryLight = accentBlueLight;
   static const Color secondaryDark = accentBlueDark;
 
-  // Backgrounds
-  static const Color background = primary; 
+  // Dark Theme Surfaces
+  static const Color background = primary;
   static const Color surface = primaryLight;
   static const Color surfaceVariant = neutral600;
+
+  // Light Theme Surfaces
+  static const Color lightBackground = Color(0xFFFAFAFA);
+  static const Color lightSurface = Color(0xFFFFFFFF);
+  static const Color lightSurfaceVariant = Color(0xFFF0F0F0);
+  static const Color lightBorder = Color(0xFFE0E0E0);
+  static const Color lightOnBackground = Color(0xFF0A0A0A);
+  static const Color lightOnSurface = Color(0xFF1A1A1A);
+  static const Color lightIconMuted = Color(0xFF9E9E9E);
 
   // Text Colors
   static const Color onPrimary = Color(0xFFFFFFFF); // White text
@@ -91,8 +100,8 @@ class AppColorScheme {
   static ColorScheme get darkScheme => ColorScheme.fromSeed(
     seedColor: AppColors.accent,
     brightness: Brightness.dark,
-    primary: AppColors.primary,
-    onPrimary: AppColors.onPrimary,
+    primary: AppColors.accent,
+    onPrimary: AppColors.onAccent,
     secondary: AppColors.secondary,
     onSecondary: AppColors.onSecondary,
     error: AppColors.error,
@@ -105,13 +114,129 @@ class AppColorScheme {
   static ColorScheme get lightScheme => ColorScheme.fromSeed(
     seedColor: AppColors.accent,
     brightness: Brightness.light,
-    primary: AppColors.secondaryLight,
-    onPrimary: AppColors.onPrimary,
-    secondary: AppColors.accentLight,
-    onSecondary: AppColors.onSecondary,
+    primary: AppColors.accent,
+    onPrimary: AppColors.onAccent,
+    secondary: AppColors.accentBlue,
+    onSecondary: AppColors.onAccent,
     error: AppColors.error,
-    onError: AppColors.onPrimary,
-    surface: AppColors.neutral50,
-    onSurface: AppColors.primary,
+    onError: AppColors.onAccent,
+    surface: AppColors.lightSurface,
+    onSurface: AppColors.lightOnSurface,
+    surfaceContainerHighest: AppColors.lightSurfaceVariant,
+  );
+}
+
+/// Returns the correct ThemeData for light and dark modes.
+class AppThemeData {
+  static ThemeData get darkTheme => ThemeData(
+    colorScheme: AppColorScheme.darkScheme,
+    useMaterial3: true,
+    scaffoldBackgroundColor: AppColors.background,
+    appBarTheme: const AppBarTheme(
+      centerTitle: true,
+      elevation: 0,
+      backgroundColor: AppColors.background,
+      foregroundColor: AppColors.onSurface,
+      surfaceTintColor: Colors.transparent,
+    ),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: AppColors.surface,
+      selectedItemColor: AppColors.accent,
+      unselectedItemColor: AppColors.neutral400,
+      type: BottomNavigationBarType.fixed,
+    ),
+    cardTheme: const CardThemeData(
+      color: AppColors.surface,
+      elevation: 2,
+      surfaceTintColor: Colors.transparent,
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.accent,
+        foregroundColor: AppColors.onAccent,
+      ),
+    ),
+    inputDecorationTheme: const InputDecorationTheme(
+      filled: true,
+      fillColor: AppColors.surfaceVariant,
+      border: OutlineInputBorder(
+        borderSide: BorderSide(color: AppColors.neutral600),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: AppColors.neutral600),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: AppColors.accent),
+      ),
+    ),
+    dividerTheme: const DividerThemeData(color: AppColors.neutral600),
+    iconTheme: const IconThemeData(color: AppColors.onSurface),
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.selected) ? AppColors.accent : AppColors.neutral400,
+      ),
+      trackColor: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.selected)
+            ? AppColors.accent.withValues(alpha: 0.4)
+            : AppColors.neutral600,
+      ),
+    ),
+  );
+
+  static ThemeData get lightTheme => ThemeData(
+    colorScheme: AppColorScheme.lightScheme,
+    useMaterial3: true,
+    scaffoldBackgroundColor: AppColors.lightBackground,
+    appBarTheme: const AppBarTheme(
+      centerTitle: true,
+      elevation: 0,
+      backgroundColor: AppColors.lightBackground,
+      foregroundColor: AppColors.lightOnSurface,
+      surfaceTintColor: Colors.transparent,
+      shadowColor: Color(0x14000000),
+    ),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: AppColors.lightSurface,
+      selectedItemColor: AppColors.accent,
+      unselectedItemColor: AppColors.lightIconMuted,
+      type: BottomNavigationBarType.fixed,
+    ),
+    cardTheme: const CardThemeData(
+      color: AppColors.lightSurface,
+      elevation: 1,
+      surfaceTintColor: Colors.transparent,
+      shadowColor: Color(0x1A000000),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.accent,
+        foregroundColor: AppColors.onAccent,
+      ),
+    ),
+    inputDecorationTheme: const InputDecorationTheme(
+      filled: true,
+      fillColor: AppColors.lightSurfaceVariant,
+      border: OutlineInputBorder(
+        borderSide: BorderSide(color: AppColors.lightBorder),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: AppColors.lightBorder),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: AppColors.accent),
+      ),
+    ),
+    dividerTheme: const DividerThemeData(color: AppColors.lightBorder),
+    iconTheme: const IconThemeData(color: AppColors.lightOnSurface),
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.selected) ? AppColors.accent : Colors.white,
+      ),
+      trackColor: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.selected)
+            ? AppColors.accent.withValues(alpha: 0.4)
+            : AppColors.lightBorder,
+      ),
+    ),
   );
 }

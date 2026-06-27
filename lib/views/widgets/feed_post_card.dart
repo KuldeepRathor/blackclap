@@ -11,6 +11,7 @@ import '../../constants/color_constants.dart';
 import '../../models/post_model.dart';
 import '../../services/api_service.dart';
 import '../../services/interaction_api_service.dart';
+import '../../utils/theme_colors.dart';
 import 'comments_sheet.dart';
 
 /// Full-height feed post card that accepts raw API map data.
@@ -223,18 +224,18 @@ class _FeedPostCardState extends State<FeedPostCard>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(username,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 13.5,
-                              color: AppColors.onSurface)),
+                              color: context.primaryText)),
                       if (location.isNotEmpty)
                         Text(location,
-                            style: const TextStyle(
-                                fontSize: 11, color: AppColors.neutral400)),
+                            style: TextStyle(
+                                fontSize: 11, color: context.mutedText)),
                     ],
                   ),
                 ),
-                const Icon(Icons.more_horiz, color: AppColors.neutral400, size: 20),
+                Icon(Icons.more_horiz, color: context.iconColor, size: 20),
               ],
             ),
           ),
@@ -307,7 +308,7 @@ class _FeedPostCardState extends State<FeedPostCard>
                         _isLiked
                             ? Icons.favorite_rounded
                             : Icons.favorite_border_rounded,
-                        color: _isLiked ? AppColors.like : AppColors.neutral200,
+                        color: _isLiked ? AppColors.like : context.iconColor,
                         size: 26,
                       ),
                       if (_likesCount > 0) ...[
@@ -316,7 +317,7 @@ class _FeedPostCardState extends State<FeedPostCard>
                             style: TextStyle(
                                 color: _isLiked
                                     ? AppColors.like
-                                    : AppColors.neutral200,
+                                    : context.iconColor,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600)),
                       ],
@@ -331,13 +332,13 @@ class _FeedPostCardState extends State<FeedPostCard>
                   padding: const EdgeInsets.all(8),
                   child: Row(
                     children: [
-                      const Icon(Icons.chat_bubble_outline_rounded,
-                          color: AppColors.neutral200, size: 24),
+                      Icon(Icons.chat_bubble_outline_rounded,
+                          color: context.iconColor, size: 24),
                       if (_commentsCount > 0) ...[
                         const SizedBox(width: 5),
                         Text('$_commentsCount',
-                            style: const TextStyle(
-                                color: AppColors.neutral200,
+                            style: TextStyle(
+                                color: context.iconColor,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600)),
                       ],
@@ -346,7 +347,7 @@ class _FeedPostCardState extends State<FeedPostCard>
                 ),
               ),
               const SizedBox(width: 4),
-              const Icon(Icons.send_outlined, color: AppColors.neutral200, size: 24),
+              Icon(Icons.send_outlined, color: context.iconColor, size: 24),
               const Spacer(),
               GestureDetector(
                 onTap: _toggleSave,
@@ -354,7 +355,7 @@ class _FeedPostCardState extends State<FeedPostCard>
                   padding: const EdgeInsets.all(8),
                   child: Icon(
                     _isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                    color: _isSaved ? AppColors.accent : AppColors.neutral200,
+                    color: _isSaved ? AppColors.accent : context.iconColor,
                     size: 24,
                   ),
                 ),
@@ -372,8 +373,8 @@ class _FeedPostCardState extends State<FeedPostCard>
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
               text: TextSpan(
-                style: const TextStyle(
-                    color: AppColors.onSurface, fontSize: 13.5, height: 1.4),
+                style: TextStyle(
+                    color: context.primaryText, fontSize: 13.5, height: 1.4),
                 children: [
                   TextSpan(
                       text: '$username ',
@@ -388,11 +389,11 @@ class _FeedPostCardState extends State<FeedPostCard>
           padding: const EdgeInsets.only(left: 14, top: 6, bottom: 14),
           child: Text(
             _formatTime(post['createdAt']),
-            style: const TextStyle(color: AppColors.neutral400, fontSize: 11),
+            style: TextStyle(color: context.mutedText, fontSize: 11),
           ),
         ),
 
-        const Divider(color: AppColors.neutral600, height: 1),
+        Divider(color: context.dividerColor, height: 1),
       ],
     );
   }
@@ -495,11 +496,11 @@ class _VideoPostPlayerState extends State<VideoPostPlayer> {
               CachedNetworkImage(
                 imageUrl: widget.thumbnailUrl!,
                 fit: BoxFit.cover,
-                placeholder: (_, __) => Container(color: AppColors.neutral600),
-                errorWidget: (_, __, ___) => Container(color: AppColors.neutral600),
+                placeholder: (_, __) => Container(color: context.shimmerBase),
+                errorWidget: (_, __, ___) => Container(color: context.shimmerBase),
               )
             else
-              Container(color: AppColors.neutral600),
+              Container(color: context.shimmerBase),
 
             if (!_isPlaying)
               Center(

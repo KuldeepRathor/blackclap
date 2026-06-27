@@ -10,6 +10,7 @@ import '../../../blocs/chat/chat_bloc.dart';
 import '../../../constants/color_constants.dart';
 import '../../../models/conversation_model.dart';
 import '../../../repositories/chat_repository.dart';
+import '../../../utils/theme_colors.dart';
 import '../../widgets/message_bubble.dart';
 
 class ChatScreen extends StatelessWidget {
@@ -130,11 +131,9 @@ class _ChatViewState extends State<_ChatView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
+          icon: Icon(Icons.arrow_back, color: context.primaryText),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Row(
@@ -167,8 +166,8 @@ class _ChatViewState extends State<_ChatView> {
                       Text(
                         _title,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.onSurface,
+                        style: TextStyle(
+                          color: context.primaryText,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -222,7 +221,7 @@ class _ChatViewState extends State<_ChatView> {
                           const SizedBox(height: 12),
                           Text(state.message,
                               textAlign: TextAlign.center,
-                              style: const TextStyle(color: AppColors.neutral200)),
+                              style: TextStyle(color: context.secondaryText)),
                           const SizedBox(height: 12),
                           TextButton(
                             onPressed: () => context
@@ -237,10 +236,10 @@ class _ChatViewState extends State<_ChatView> {
                 }
                 final loaded = state as ChatLoaded;
                 if (loaded.messages.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Text(
                       'Say hi 👋',
-                      style: TextStyle(color: AppColors.neutral200, fontSize: 16),
+                      style: TextStyle(color: context.secondaryText, fontSize: 16),
                     ),
                   );
                 }
@@ -289,7 +288,7 @@ class _ChatViewState extends State<_ChatView> {
       top: false,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        color: AppColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         child: Row(
           children: [
             Expanded(
@@ -299,12 +298,12 @@ class _ChatViewState extends State<_ChatView> {
                 minLines: 1,
                 maxLines: 5,
                 textInputAction: TextInputAction.newline,
-                style: const TextStyle(color: AppColors.onSurface),
+                style: TextStyle(color: context.primaryText),
                 decoration: InputDecoration(
                   hintText: 'Message…',
-                  hintStyle: const TextStyle(color: AppColors.neutral300),
+                  hintStyle: TextStyle(color: context.mutedText),
                   filled: true,
-                  fillColor: AppColors.surfaceVariant,
+                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   border: OutlineInputBorder(

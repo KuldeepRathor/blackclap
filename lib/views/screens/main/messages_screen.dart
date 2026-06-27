@@ -7,6 +7,7 @@ import '../../../blocs/auth/auth_state.dart';
 import '../../../blocs/chat/conversations_bloc.dart';
 import '../../../constants/color_constants.dart';
 import '../../../repositories/chat_repository.dart';
+import '../../../utils/theme_colors.dart';
 import '../../widgets/conversation_tile.dart';
 
 class MessagesScreen extends StatelessWidget {
@@ -65,7 +66,6 @@ class _MessagesViewState extends State<_MessagesView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: _buildAppBar(context),
       body: BlocBuilder<ConversationsBloc, ConversationsState>(
         builder: (context, state) {
@@ -105,10 +105,10 @@ class _MessagesViewState extends State<_MessagesView> {
                     physics: const AlwaysScrollableScrollPhysics(),
                     itemCount: loaded.conversations.length +
                         (loaded.isLoadingMore ? 1 : 0),
-                    separatorBuilder: (_, __) => const Divider(
+                    separatorBuilder: (_, __) => Divider(
                       height: 1,
                       thickness: 1,
-                      color: AppColors.neutral600,
+                      color: context.dividerColor,
                       indent: 76,
                     ),
                     itemBuilder: (context, index) {
@@ -146,13 +146,12 @@ class _MessagesViewState extends State<_MessagesView> {
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
-      backgroundColor: AppColors.surface,
       automaticallyImplyLeading: false,
-      title: const Text(
+      title: Text(
         'Messages',
         style: TextStyle(
           fontWeight: FontWeight.bold,
-          color: AppColors.onSurface,
+          color: context.primaryText,
           fontSize: 20,
         ),
       ),
@@ -171,9 +170,9 @@ class _MessagesViewState extends State<_MessagesView> {
               children: [
                 IconButton(
                   tooltip: 'New message',
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.edit_square,
-                    color: AppColors.onSurface,
+                    color: context.primaryText,
                   ),
                   onPressed: () async {
                     await context.push('/new-message');
@@ -237,7 +236,7 @@ class _ErrorView extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.neutral200, fontSize: 14),
+              style: TextStyle(color: context.secondaryText, fontSize: 14),
             ),
             const SizedBox(height: 16),
             ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
@@ -259,28 +258,28 @@ class _EmptyView extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
         SizedBox(height: MediaQuery.of(context).size.height * 0.22),
-        const Icon(
+        Icon(
           Icons.forum_outlined,
           size: 80,
-          color: AppColors.neutral500,
+          color: context.iconColor,
         ),
         const SizedBox(height: 20),
-        const Text(
+        Text(
           'Your Messages',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
-            color: AppColors.onSurface,
+            color: context.primaryText,
           ),
         ),
         const SizedBox(height: 8),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 48),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 48),
           child: Text(
             'Send private messages to a friend',
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.neutral300, fontSize: 14),
+            style: TextStyle(color: context.mutedText, fontSize: 14),
           ),
         ),
         const SizedBox(height: 28),

@@ -16,10 +16,12 @@ import 'views/screens/main/other_user_profile_screen.dart';
 import 'views/screens/main/follow_list_screen.dart';
 import 'views/screens/main/chat_screen.dart';
 import 'views/screens/main/new_message_screen.dart';
+import 'views/screens/main/settings_screen.dart';
 import 'blocs/auth/auth_bloc.dart';
 import 'blocs/auth/auth_event.dart';
 import 'blocs/auth/auth_state.dart';
 import 'blocs/posts/posts_bloc.dart';
+import 'blocs/theme/theme_cubit.dart';
 import 'repositories/user_repository.dart';
 import 'repositories/post_repository.dart';
 import 'repositories/chat_repository.dart';
@@ -65,6 +67,9 @@ class BlackClapApp extends StatelessWidget {
               postRepository: context.read<PostRepository>(),
             ),
           ),
+          BlocProvider<ThemeCubit>(
+            create: (_) => ThemeCubit(),
+          ),
         ],
         child: BlocListener<AuthBloc, AuthState>(
           // Open the chat WebSocket once authenticated; close it on logout so
@@ -85,52 +90,22 @@ class BlackClapApp extends StatelessWidget {
             buildWhen: (previous, current) =>
                 previous.runtimeType != current.runtimeType,
             builder: (context, state) {
-              return MaterialApp.router(
-              debugShowCheckedModeBanner: false,
-              title: 'Blackclap',
-              theme: ThemeData(
-                colorScheme: AppColorScheme.darkScheme,
-                useMaterial3: true,
-                scaffoldBackgroundColor: AppColors.background,
-                appBarTheme: const AppBarTheme(
-                  centerTitle: true,
-                  elevation: 0,
-                  backgroundColor: AppColors.surface,
-                  foregroundColor: AppColors.onSurface,
-                ),
-                bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-                  backgroundColor: AppColors.surface,
-                  selectedItemColor: AppColors.accent,
-                  unselectedItemColor: AppColors.neutral400,
-                  type: BottomNavigationBarType.fixed,
-                ),
-                cardTheme: const CardThemeData(
-                  color: AppColors.surface,
-                  elevation: 2,
-                ),
-                elevatedButtonTheme: ElevatedButtonThemeData(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    foregroundColor: AppColors.onAccent,
-                  ),
-                ),
-                inputDecorationTheme: const InputDecorationTheme(
-                  filled: true,
-                  fillColor: AppColors.surfaceVariant,
-                  border: OutlineInputBorder(
-                    borderSide: BorderSide(color: AppColors.neutral600),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: AppColors.neutral600),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: AppColors.accent),
-                  ),
-                ),
-              ),
-              routerConfig: _createRouter(state),
-            );
-          },
+              final router = _createRouter(state);
+              return BlocBuilder<ThemeCubit, ThemeMode>(
+                builder: (context, themeMode) {
+                  return MaterialApp.router(
+                    debugShowCheckedModeBanner: false,
+                    title: 'Blackclap',
+                    theme: AppThemeData.lightTheme,
+                    darkTheme: AppThemeData.darkTheme,
+                    themeMode: themeMode,
+                    themeAnimationDuration: const Duration(milliseconds: 350),
+                    themeAnimationCurve: Curves.easeInOut,
+                    routerConfig: router,
+                  );
+                },
+              );
+            },
           ), // BlocBuilder
         ), // BlocListener
       ), // MultiBlocProvider
@@ -216,6 +191,10 @@ class BlackClapApp extends StatelessWidget {
           path: '/new-message',
           builder: (context, state) => const NewMessageScreen(),
         ),
+        GoRoute(
+          path: '/settings',
+          builder: (context, state) => const SettingsScreen(),
+        ),
       ],
     );
   }
@@ -247,53 +226,53 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
     ];
   }
 
-  List<PersistentBottomNavBarItem> _navBarsItems() {
-    return [
-      PersistentBottomNavBarItem(
-        icon: const Icon(Icons.home),
-        inactiveIcon: const Icon(Icons.home_outlined),
-        activeColorPrimary: AppColors.accent,
-        inactiveColorPrimary: AppColors.neutral400,
-      ),
-      PersistentBottomNavBarItem(
-        icon: const Icon(Icons.search),
-        inactiveIcon: const Icon(Icons.search_outlined),
-        activeColorPrimary: AppColors.accent,
-        inactiveColorPrimary: AppColors.neutral400,
-      ),
-      PersistentBottomNavBarItem(
-        icon: const Icon(Icons.chat_bubble),
-        inactiveIcon: const Icon(Icons.chat_bubble_outline),
-        activeColorPrimary: AppColors.accent,
-        inactiveColorPrimary: AppColors.neutral400,
-      ),
-      PersistentBottomNavBarItem(
-        icon: const Icon(Icons.play_circle_filled),
-        inactiveIcon: const Icon(Icons.play_circle_outline),
-        activeColorPrimary: AppColors.accent,
-        inactiveColorPrimary: AppColors.neutral400,
-      ),
-      PersistentBottomNavBarItem(
-        icon: const Icon(Icons.person),
-        inactiveIcon: const Icon(Icons.person_outline),
-        activeColorPrimary: AppColors.accent,
-        inactiveColorPrimary: AppColors.neutral400,
-      ),
-    ];
-  }
-
   @override
   Widget build(BuildContext context) {
+    final surfaceColor = Theme.of(context).colorScheme.surface;
+    final accentColor = AppColors.accent;
+    final inactiveColor = Theme.of(context).bottomNavigationBarTheme.unselectedItemColor
+        ?? AppColors.neutral400;
     return PersistentTabView(
       context,
       controller: _controller,
       screens: _buildScreens(),
-      items: _navBarsItems(),
+      items: [
+        PersistentBottomNavBarItem(
+          icon: const Icon(Icons.home),
+          inactiveIcon: const Icon(Icons.home_outlined),
+          activeColorPrimary: accentColor,
+          inactiveColorPrimary: inactiveColor,
+        ),
+        PersistentBottomNavBarItem(
+          icon: const Icon(Icons.search),
+          inactiveIcon: const Icon(Icons.search_outlined),
+          activeColorPrimary: accentColor,
+          inactiveColorPrimary: inactiveColor,
+        ),
+        PersistentBottomNavBarItem(
+          icon: const Icon(Icons.chat_bubble),
+          inactiveIcon: const Icon(Icons.chat_bubble_outline),
+          activeColorPrimary: accentColor,
+          inactiveColorPrimary: inactiveColor,
+        ),
+        PersistentBottomNavBarItem(
+          icon: const Icon(Icons.play_circle_filled),
+          inactiveIcon: const Icon(Icons.play_circle_outline),
+          activeColorPrimary: accentColor,
+          inactiveColorPrimary: inactiveColor,
+        ),
+        PersistentBottomNavBarItem(
+          icon: const Icon(Icons.person),
+          inactiveIcon: const Icon(Icons.person_outline),
+          activeColorPrimary: accentColor,
+          inactiveColorPrimary: inactiveColor,
+        ),
+      ],
       handleAndroidBackButtonPress: true,
       resizeToAvoidBottomInset: true,
       stateManagement: true,
       popBehaviorOnSelectedNavBarItemPress: PopBehavior.once,
-      backgroundColor: AppColors.surface,
+      backgroundColor: surfaceColor,
       navBarStyle: NavBarStyle.style3,
     );
   }
