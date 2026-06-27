@@ -157,9 +157,13 @@ class _ChatViewState extends State<_ChatView> {
             Expanded(
               child: BlocBuilder<ChatBloc, ChatState>(
                 buildWhen: (a, b) => a.runtimeType != b.runtimeType ||
-                    (a is ChatLoaded && b is ChatLoaded && a.otherTyping != b.otherTyping),
+                    (a is ChatLoaded &&
+                        b is ChatLoaded &&
+                        (a.otherTyping != b.otherTyping ||
+                            a.isOtherOnline != b.isOtherOnline)),
                 builder: (context, state) {
                   final typing = state is ChatLoaded && state.otherTyping;
+                  final online = state is ChatLoaded && state.isOtherOnline;
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -175,6 +179,11 @@ class _ChatViewState extends State<_ChatView> {
                       if (typing)
                         const Text(
                           'typing…',
+                          style: TextStyle(color: AppColors.accent, fontSize: 12),
+                        )
+                      else if (online)
+                        const Text(
+                          'Online',
                           style: TextStyle(color: AppColors.accent, fontSize: 12),
                         ),
                     ],

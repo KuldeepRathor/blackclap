@@ -21,7 +21,9 @@ import 'blocs/auth/auth_bloc.dart';
 import 'blocs/auth/auth_event.dart';
 import 'blocs/auth/auth_state.dart';
 import 'blocs/posts/posts_bloc.dart';
+import 'blocs/chat/conversations_bloc.dart';
 import 'blocs/theme/theme_cubit.dart';
+import 'navigation/app_tab_controller.dart';
 import 'repositories/user_repository.dart';
 import 'repositories/post_repository.dart';
 import 'repositories/chat_repository.dart';
@@ -216,6 +218,12 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
     _controller = PersistentTabController(initialIndex: 0);
   }
 
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   List<Widget> _buildScreens() {
     return [
       const FeedScreen(),
@@ -226,54 +234,123 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
     ];
   }
 
+  List<PersistentBottomNavBarItem> _buildNavItems(
+      int unread, Color accent, Color inactive) {
+    return [
+      PersistentBottomNavBarItem(
+        icon: const Icon(Icons.home),
+        inactiveIcon: const Icon(Icons.home_outlined),
+        activeColorPrimary: accent,
+        inactiveColorPrimary: inactive,
+      ),
+      PersistentBottomNavBarItem(
+        icon: const Icon(Icons.search),
+        inactiveIcon: const Icon(Icons.search_outlined),
+        activeColorPrimary: accent,
+        inactiveColorPrimary: inactive,
+      ),
+      PersistentBottomNavBarItem(
+        icon: _ChatTabIcon(unread: unread, filled: true),
+        inactiveIcon: _ChatTabIcon(unread: unread, filled: false),
+        activeColorPrimary: accent,
+        inactiveColorPrimary: inactive,
+      ),
+      PersistentBottomNavBarItem(
+        icon: const Icon(Icons.play_circle_filled),
+        inactiveIcon: const Icon(Icons.play_circle_outline),
+        activeColorPrimary: accent,
+        inactiveColorPrimary: inactive,
+      ),
+      PersistentBottomNavBarItem(
+        icon: const Icon(Icons.person),
+        inactiveIcon: const Icon(Icons.person_outline),
+        activeColorPrimary: accent,
+        inactiveColorPrimary: inactive,
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
+    final authState = context.read<AuthBloc>().state;
+    final currentUserId =
+        authState is AuthAuthenticated ? authState.user.uid : '';
     final surfaceColor = Theme.of(context).colorScheme.surface;
-    final accentColor = AppColors.accent;
-    final inactiveColor = Theme.of(context).bottomNavigationBarTheme.unselectedItemColor
+    final accent = AppColors.accent;
+    final inactive = Theme.of(context).bottomNavigationBarTheme.unselectedItemColor
         ?? AppColors.neutral400;
-    return PersistentTabView(
-      context,
-      controller: _controller,
-      screens: _buildScreens(),
-      items: [
-        PersistentBottomNavBarItem(
-          icon: const Icon(Icons.home),
-          inactiveIcon: const Icon(Icons.home_outlined),
-          activeColorPrimary: accentColor,
-          inactiveColorPrimary: inactiveColor,
-        ),
-        PersistentBottomNavBarItem(
-          icon: const Icon(Icons.search),
-          inactiveIcon: const Icon(Icons.search_outlined),
-          activeColorPrimary: accentColor,
-          inactiveColorPrimary: inactiveColor,
-        ),
-        PersistentBottomNavBarItem(
-          icon: const Icon(Icons.chat_bubble),
-          inactiveIcon: const Icon(Icons.chat_bubble_outline),
-          activeColorPrimary: accentColor,
-          inactiveColorPrimary: inactiveColor,
-        ),
-        PersistentBottomNavBarItem(
-          icon: const Icon(Icons.play_circle_filled),
-          inactiveIcon: const Icon(Icons.play_circle_outline),
-          activeColorPrimary: accentColor,
-          inactiveColorPrimary: inactiveColor,
-        ),
-        PersistentBottomNavBarItem(
-          icon: const Icon(Icons.person),
-          inactiveIcon: const Icon(Icons.person_outline),
-          activeColorPrimary: accentColor,
-          inactiveColorPrimary: inactiveColor,
-        ),
+
+    return BlocProvider<ConversationsBloc>(
+      create: (ctx) => ConversationsBloc(
+        repository: ctx.read<ChatRepository>(),
+        currentUserId: currentUserId,
+      )..add(const ConversationsLoadRequested()),
+      child: BlocBuilder<ConversationsBloc, ConversationsState>(
+        buildWhen: (a, b) {
+          final ua = a is ConversationsLoaded ? a.totalUnread : 0;
+          final ub = b is ConversationsLoaded ? b.totalUnread : 0;
+          return ua != ub;
+        },
+        builder: (context, convState) {
+          final unread =
+              convState is ConversationsLoaded ? convState.totalUnread : 0;
+          return AppTabController(
+            controller: _controller,
+            child: PersistentTabView(
+              context,
+              controller: _controller,
+              screens: _buildScreens(),
+              items: _buildNavItems(unread, accent, inactive),
+              handleAndroidBackButtonPress: true,
+              resizeToAvoidBottomInset: true,
+              stateManagement: true,
+              popBehaviorOnSelectedNavBarItemPress: PopBehavior.once,
+              backgroundColor: surfaceColor,
+              navBarStyle: NavBarStyle.style3,
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Chat tab icon with an unread dot badge.
+class _ChatTabIcon extends StatelessWidget {
+  final int unread;
+  final bool filled;
+
+  const _ChatTabIcon({required this.unread, required this.filled});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Icon(filled ? Icons.chat_bubble : Icons.chat_bubble_outline),
+        if (unread > 0)
+          Positioned(
+            top: -3,
+            right: -6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+              decoration: BoxDecoration(
+                color: AppColors.accent,
+                borderRadius: BorderRadius.circular(7),
+              ),
+              constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+              child: Text(
+                unread > 9 ? '9+' : '$unread',
+                style: const TextStyle(
+                  fontSize: 8,
+                  color: AppColors.onAccent,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
       ],
-      handleAndroidBackButtonPress: true,
-      resizeToAvoidBottomInset: true,
-      stateManagement: true,
-      popBehaviorOnSelectedNavBarItemPress: PopBehavior.once,
-      backgroundColor: surfaceColor,
-      navBarStyle: NavBarStyle.style3,
     );
   }
 }

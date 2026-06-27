@@ -32,6 +32,7 @@ class ChatLoaded extends ChatState {
   final bool isLoadingOlder;
   final bool hasMoreOlder;
   final bool otherTyping;
+  final bool isOtherOnline;
   final SocketStatus connectionStatus;
 
   const ChatLoaded({
@@ -40,6 +41,7 @@ class ChatLoaded extends ChatState {
     this.isLoadingOlder = false,
     this.hasMoreOlder = false,
     this.otherTyping = false,
+    this.isOtherOnline = false,
     this.connectionStatus = SocketStatus.disconnected,
   });
 
@@ -50,6 +52,7 @@ class ChatLoaded extends ChatState {
     bool? isLoadingOlder,
     bool? hasMoreOlder,
     bool? otherTyping,
+    bool? isOtherOnline,
     SocketStatus? connectionStatus,
   }) {
     return ChatLoaded(
@@ -58,6 +61,7 @@ class ChatLoaded extends ChatState {
       isLoadingOlder: isLoadingOlder ?? this.isLoadingOlder,
       hasMoreOlder: hasMoreOlder ?? this.hasMoreOlder,
       otherTyping: otherTyping ?? this.otherTyping,
+      isOtherOnline: isOtherOnline ?? this.isOtherOnline,
       connectionStatus: connectionStatus ?? this.connectionStatus,
     );
   }
@@ -69,6 +73,7 @@ class ChatLoaded extends ChatState {
         isLoadingOlder,
         hasMoreOlder,
         otherTyping,
+        isOtherOnline,
         connectionStatus,
       ];
 }
