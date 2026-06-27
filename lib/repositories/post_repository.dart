@@ -61,6 +61,7 @@ class PostRepository implements PostRepositoryInterface {
     required List<File> imageFiles,
     required String caption,
     String? location,
+    List<String> taggedUserIds = const [],
   }) async {
     final mediaUrls = await Future.wait(
       imageFiles.map((file) => _postApiService.uploadImage(file)),
@@ -71,6 +72,7 @@ class PostRepository implements PostRepositoryInterface {
       location: location,
       mediaType: imageFiles.isEmpty ? 'text' : 'image',
       mediaUrls: mediaUrls,
+      taggedUserIds: taggedUserIds,
     );
 
     return PostModel.fromApiResponse(response);
@@ -83,6 +85,7 @@ class PostRepository implements PostRepositoryInterface {
     File? thumbnailFile,
     required String caption,
     String? location,
+    List<String> taggedUserIds = const [],
   }) async {
     final videoUrl = await _postApiService.uploadVideo(videoFile);
 
@@ -97,6 +100,7 @@ class PostRepository implements PostRepositoryInterface {
       mediaType: 'video',
       mediaUrls: [videoUrl],
       thumbnailUrl: thumbnailUrl,
+      taggedUserIds: taggedUserIds,
     );
 
     return PostModel.fromApiResponse(response);

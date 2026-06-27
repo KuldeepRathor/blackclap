@@ -2,6 +2,39 @@ import 'package:equatable/equatable.dart';
 
 enum MediaType { image, video, text }
 
+class TaggedUserModel extends Equatable {
+  final String id;
+  final String username;
+  final String? displayName;
+  final String? avatarUrl;
+
+  const TaggedUserModel({
+    required this.id,
+    required this.username,
+    this.displayName,
+    this.avatarUrl,
+  });
+
+  factory TaggedUserModel.fromMap(Map<String, dynamic> map) {
+    return TaggedUserModel(
+      id: map['id'] as String? ?? '',
+      username: map['username'] as String? ?? '',
+      displayName: map['display_name'] as String?,
+      avatarUrl: map['avatar_url'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'username': username,
+        'display_name': displayName,
+        'avatar_url': avatarUrl,
+      };
+
+  @override
+  List<Object?> get props => [id, username, displayName, avatarUrl];
+}
+
 class PostModel extends Equatable {
   final String id;
   final String uid;
@@ -19,8 +52,10 @@ class PostModel extends Equatable {
   final String location;
   final int likesCount;
   final int commentsCount;
+  final int viewsCount;
   final bool isLiked;
   final bool isSaved;
+  final List<TaggedUserModel> taggedUsers;
 
   const PostModel({
     required this.id,
@@ -39,8 +74,10 @@ class PostModel extends Equatable {
     required this.location,
     this.likesCount = 0,
     this.commentsCount = 0,
+    this.viewsCount = 0,
     this.isLiked = false,
     this.isSaved = false,
+    this.taggedUsers = const [],
   });
 
   /// Maps the response from POST /api/v1/posts (or feed endpoint) to PostModel.
@@ -84,6 +121,11 @@ class PostModel extends Equatable {
       commentsCount: map['comments_count'] as int? ?? 0,
       isLiked: map['is_liked'] as bool? ?? false,
       isSaved: map['is_saved'] as bool? ?? false,
+      viewsCount: map['views_count'] as int? ?? 0,
+      taggedUsers: (map['tagged_users'] as List<dynamic>? ?? [])
+          .cast<Map<String, dynamic>>()
+          .map(TaggedUserModel.fromMap)
+          .toList(),
     );
   }
 
@@ -112,6 +154,11 @@ class PostModel extends Equatable {
       commentsCount: map['comments_count'] as int? ?? map['commentsCount'] as int? ?? 0,
       isLiked: map['is_liked'] as bool? ?? map['isLiked'] as bool? ?? false,
       isSaved: map['is_saved'] as bool? ?? map['isSaved'] as bool? ?? false,
+      viewsCount: map['views_count'] as int? ?? map['viewsCount'] as int? ?? 0,
+      taggedUsers: (map['tagged_users'] as List<dynamic>? ?? [])
+          .cast<Map<String, dynamic>>()
+          .map(TaggedUserModel.fromMap)
+          .toList(),
     );
   }
 
@@ -135,6 +182,8 @@ class PostModel extends Equatable {
       'comments_count': commentsCount,
       'is_liked': isLiked,
       'is_saved': isSaved,
+      'views_count': viewsCount,
+      'tagged_users': taggedUsers.map((u) => u.toMap()).toList(),
     };
   }
 
@@ -157,6 +206,8 @@ class PostModel extends Equatable {
     int? commentsCount,
     bool? isLiked,
     bool? isSaved,
+    int? viewsCount,
+    List<TaggedUserModel>? taggedUsers,
   }) {
     return PostModel(
       id: id ?? this.id,
@@ -177,6 +228,8 @@ class PostModel extends Equatable {
       commentsCount: commentsCount ?? this.commentsCount,
       isLiked: isLiked ?? this.isLiked,
       isSaved: isSaved ?? this.isSaved,
+      viewsCount: viewsCount ?? this.viewsCount,
+      taggedUsers: taggedUsers ?? this.taggedUsers,
     );
   }
 
@@ -200,6 +253,8 @@ class PostModel extends Equatable {
         commentsCount,
         isLiked,
         isSaved,
+        viewsCount,
+        taggedUsers,
       ];
 }
 

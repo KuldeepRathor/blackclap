@@ -33,14 +33,18 @@ class PostsCreateRequested extends PostsEvent {
   /// Absolute path to the generated thumbnail (video posts only).
   final String? thumbnailPath;
 
+  /// UUIDs of users tagged in this post.
+  final List<String> taggedUserIds;
+
   const PostsCreateRequested({
     required this.filePaths,
     required this.caption,
     this.location,
     this.mediaType = 'image',
     this.thumbnailPath,
+    this.taggedUserIds = const [],
   });
 
   @override
-  List<Object?> get props => [filePaths, caption, location, mediaType, thumbnailPath];
+  List<Object?> get props => [filePaths, caption, location, mediaType, thumbnailPath, taggedUserIds];
 }

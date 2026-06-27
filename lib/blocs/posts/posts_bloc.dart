@@ -62,12 +62,14 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
           thumbnailFile: event.thumbnailPath != null ? File(event.thumbnailPath!) : null,
           caption: event.caption,
           location: event.location,
+          taggedUserIds: event.taggedUserIds,
         );
       } else {
         await _postRepository.createPost(
           imageFiles: event.filePaths.map((p) => File(p)).toList(),
           caption: event.caption,
           location: event.location,
+          taggedUserIds: event.taggedUserIds,
         );
       }
       emit(PostsCreateSuccess());

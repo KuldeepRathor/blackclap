@@ -14,6 +14,9 @@ import '../../../blocs/posts/posts_bloc.dart';
 import '../../../blocs/posts/posts_event.dart';
 import '../../../blocs/posts/posts_state.dart';
 import '../../../constants/color_constants.dart';
+import '../../../models/user_model.dart';
+import '../../../services/api_service.dart';
+import '../../../services/search_api_service.dart';
 
 enum _PostMode { image, video }
 
@@ -40,6 +43,9 @@ class _CreatePostScreenState extends State<CreatePostScreen>
   bool _generatingThumbnail = false;
   int _currentPreviewPage = 0;
   bool _showLocationField = false;
+  List<UserModel> _taggedUsers = [];
+
+  final SearchApiService _searchApi = SearchApiService(ApiService());
 
   @override
   void initState() {
@@ -204,6 +210,7 @@ class _CreatePostScreenState extends State<CreatePostScreen>
   void _submitPost() {
     final caption = _captionController.text.trim();
     final location = _locationController.text.trim();
+    final taggedIds = _taggedUsers.map((u) => u.uid).toList();
 
     if (_mode == _PostMode.video) {
       if (_selectedVideo == null) {
@@ -220,6 +227,7 @@ class _CreatePostScreenState extends State<CreatePostScreen>
             location: location.isEmpty ? null : location,
             mediaType: 'video',
             thumbnailPath: _thumbnailFile?.path,
+            taggedUserIds: taggedIds,
           ));
     } else {
       if (caption.isEmpty && _selectedImages.isEmpty) {
@@ -231,6 +239,7 @@ class _CreatePostScreenState extends State<CreatePostScreen>
             caption: caption,
             location: location.isEmpty ? null : location,
             mediaType: _selectedImages.isEmpty ? 'text' : 'image',
+            taggedUserIds: taggedIds,
           ));
     }
   }
@@ -246,6 +255,7 @@ class _CreatePostScreenState extends State<CreatePostScreen>
       _generatingThumbnail = false;
       _currentPreviewPage = 0;
       _showLocationField = false;
+      _taggedUsers = [];
     });
   }
 
@@ -321,6 +331,9 @@ class _CreatePostScreenState extends State<CreatePostScreen>
                               const Divider(
                                   height: 1, color: AppColors.neutral600),
                               _buildLocationRow(isLoading),
+                              const Divider(
+                                  height: 1, color: AppColors.neutral600),
+                              _buildTagPeopleRow(isLoading),
                               const Divider(
                                   height: 1, color: AppColors.neutral600),
                               const SizedBox(height: 120),
@@ -857,6 +870,107 @@ class _CreatePostScreenState extends State<CreatePostScreen>
     );
   }
 
+  // ── Tag people ────────────────────────────────────────────────────────────────
+
+  Widget _buildTagPeopleRow(bool isLoading) {
+    return InkWell(
+      onTap: isLoading ? null : _showTagPeopleSheet,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.person_add_alt_1_outlined,
+                    color: AppColors.neutral400, size: 22),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _taggedUsers.isEmpty ? 'Tag people' : 'Tagged people',
+                    style: TextStyle(
+                      color: _taggedUsers.isEmpty
+                          ? AppColors.neutral400
+                          : AppColors.onSurface,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.neutral500,
+                  size: 22,
+                ),
+              ],
+            ),
+            if (_taggedUsers.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: _taggedUsers.map((user) {
+                  return Chip(
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    backgroundColor: AppColors.accent.withValues(alpha: 0.12),
+                    avatar: CircleAvatar(
+                      radius: 12,
+                      backgroundColor: AppColors.accent,
+                      backgroundImage: user.profileImageUrl.isNotEmpty
+                          ? CachedNetworkImageProvider(user.profileImageUrl)
+                          : null,
+                      child: user.profileImageUrl.isEmpty
+                          ? Text(
+                              user.username.isNotEmpty
+                                  ? user.username[0].toUpperCase()
+                                  : '?',
+                              style: const TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.onAccent,
+                                  fontWeight: FontWeight.bold),
+                            )
+                          : null,
+                    ),
+                    label: Text(
+                      '@${user.username}',
+                      style: const TextStyle(
+                          color: AppColors.accent,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500),
+                    ),
+                    deleteIcon: const Icon(Icons.close_rounded,
+                        size: 16, color: AppColors.accent),
+                    onDeleted: isLoading
+                        ? null
+                        : () => setState(
+                            () => _taggedUsers.removeWhere(
+                                (u) => u.uid == user.uid)),
+                    padding: EdgeInsets.zero,
+                  );
+                }).toList(),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showTagPeopleSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => _TagPeopleSheet(
+        searchApi: _searchApi,
+        alreadyTagged: List.from(_taggedUsers),
+        onTagsChanged: (updated) => setState(() => _taggedUsers = updated),
+      ),
+    );
+  }
+
   // ── Bottom bar ────────────────────────────────────────────────────────────────
 
   Widget _buildBottomBar(bool isLoading) {
@@ -1114,6 +1228,307 @@ class _ModeChip extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Tag People Sheet ───────────────────────────────────────────────────────────
+
+class _TagPeopleSheet extends StatefulWidget {
+  final SearchApiService searchApi;
+  final List<UserModel> alreadyTagged;
+  final ValueChanged<List<UserModel>> onTagsChanged;
+
+  const _TagPeopleSheet({
+    required this.searchApi,
+    required this.alreadyTagged,
+    required this.onTagsChanged,
+  });
+
+  @override
+  State<_TagPeopleSheet> createState() => _TagPeopleSheetState();
+}
+
+class _TagPeopleSheetState extends State<_TagPeopleSheet> {
+  final TextEditingController _searchController = TextEditingController();
+  List<UserModel> _results = [];
+  List<UserModel> _tagged = [];
+  bool _loading = false;
+  String _lastQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _tagged = List.from(widget.alreadyTagged);
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    final q = _searchController.text.trim();
+    if (q == _lastQuery) return;
+    _lastQuery = q;
+    if (q.isEmpty) {
+      setState(() => _results = []);
+      return;
+    }
+    _search(q);
+  }
+
+  Future<void> _search(String query) async {
+    setState(() => _loading = true);
+    try {
+      final result = await widget.searchApi.search(query: query, type: 'users', limit: 20);
+      if (mounted && _searchController.text.trim() == query) {
+        setState(() => _results = result.users);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _results = []);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _toggle(UserModel user) {
+    setState(() {
+      final existing = _tagged.indexWhere((u) => u.uid == user.uid);
+      if (existing >= 0) {
+        _tagged.removeAt(existing);
+      } else {
+        _tagged.add(user);
+      }
+    });
+  }
+
+  void _done() {
+    widget.onTagsChanged(_tagged);
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      minChildSize: 0.4,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (_, scrollController) {
+        return Column(
+          children: [
+            // Handle + header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Column(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.neutral500,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Tag people',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.onSurface,
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: _done,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 7),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [AppColors.accent, AppColors.accentBlue],
+                            ),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            'Done${_tagged.isNotEmpty ? ' (${_tagged.length})' : ''}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // Search field
+                  Container(
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: AppColors.neutral700,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      autofocus: true,
+                      style: const TextStyle(
+                          color: AppColors.onSurface, fontSize: 15),
+                      decoration: const InputDecoration(
+                        prefixIcon: Icon(Icons.search_rounded,
+                            color: AppColors.neutral400, size: 20),
+                        hintText: 'Search users…',
+                        hintStyle: TextStyle(
+                            color: AppColors.neutral400, fontSize: 15),
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding:
+                            EdgeInsets.symmetric(vertical: 11),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Tagged chips
+            if (_tagged.isNotEmpty)
+              SizedBox(
+                height: 44,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: _tagged.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (_, i) {
+                    final u = _tagged[i];
+                    return Chip(
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      backgroundColor:
+                          AppColors.accent.withValues(alpha: 0.12),
+                      avatar: CircleAvatar(
+                        radius: 12,
+                        backgroundColor: AppColors.accent,
+                        backgroundImage: u.profileImageUrl.isNotEmpty
+                            ? CachedNetworkImageProvider(u.profileImageUrl)
+                            : null,
+                        child: u.profileImageUrl.isEmpty
+                            ? Text(
+                                u.username.isNotEmpty
+                                    ? u.username[0].toUpperCase()
+                                    : '?',
+                                style: const TextStyle(
+                                    fontSize: 10,
+                                    color: AppColors.onAccent,
+                                    fontWeight: FontWeight.bold),
+                              )
+                            : null,
+                      ),
+                      label: Text('@${u.username}',
+                          style: const TextStyle(
+                              color: AppColors.accent,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500)),
+                      deleteIcon: const Icon(Icons.close_rounded,
+                          size: 14, color: AppColors.accent),
+                      onDeleted: () => _toggle(u),
+                      padding: EdgeInsets.zero,
+                    );
+                  },
+                ),
+              ),
+            const Divider(height: 1, color: AppColors.neutral600),
+            // Results list
+            Expanded(
+              child: _loading
+                  ? const Center(
+                      child: CircularProgressIndicator(color: AppColors.accent))
+                  : _results.isEmpty
+                      ? Center(
+                          child: Text(
+                            _searchController.text.isEmpty
+                                ? 'Search to tag someone'
+                                : 'No users found',
+                            style: const TextStyle(
+                                color: AppColors.neutral400, fontSize: 14),
+                          ),
+                        )
+                      : ListView.builder(
+                          controller: scrollController,
+                          itemCount: _results.length,
+                          itemBuilder: (_, i) {
+                            final user = _results[i];
+                            final isTagged =
+                                _tagged.any((u) => u.uid == user.uid);
+                            return ListTile(
+                              leading: CircleAvatar(
+                                radius: 22,
+                                backgroundColor: AppColors.accent,
+                                backgroundImage:
+                                    user.profileImageUrl.isNotEmpty
+                                        ? CachedNetworkImageProvider(
+                                            user.profileImageUrl)
+                                        : null,
+                                child: user.profileImageUrl.isEmpty
+                                    ? Text(
+                                        user.username.isNotEmpty
+                                            ? user.username[0].toUpperCase()
+                                            : '?',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.onAccent),
+                                      )
+                                    : null,
+                              ),
+                              title: Text(
+                                user.username,
+                                style: const TextStyle(
+                                    color: AppColors.onSurface,
+                                    fontWeight: FontWeight.w600),
+                              ),
+                              subtitle: user.fullName.isNotEmpty
+                                  ? Text(user.fullName,
+                                      style: const TextStyle(
+                                          color: AppColors.neutral400,
+                                          fontSize: 13))
+                                  : null,
+                              trailing: AnimatedContainer(
+                                duration: const Duration(milliseconds: 150),
+                                width: 30,
+                                height: 30,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isTagged
+                                      ? AppColors.accent
+                                      : Colors.transparent,
+                                  border: Border.all(
+                                    color: isTagged
+                                        ? AppColors.accent
+                                        : AppColors.neutral400,
+                                    width: 2,
+                                  ),
+                                ),
+                                child: isTagged
+                                    ? const Icon(Icons.check_rounded,
+                                        color: Colors.white, size: 16)
+                                    : null,
+                              ),
+                              onTap: () => _toggle(user),
+                            );
+                          },
+                        ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

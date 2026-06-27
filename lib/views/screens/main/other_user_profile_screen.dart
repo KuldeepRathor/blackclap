@@ -374,7 +374,11 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
           _postsLoading
               ? const Center(child: CircularProgressIndicator(color: AppColors.accent))
               : _buildPostsGrid(),
-          _buildEmptyReels(),
+          _postsLoading
+              ? const Center(child: CircularProgressIndicator(color: AppColors.accent))
+              : _buildReelsGrid(
+                  _posts.where((p) => p.mediaType == MediaType.video).toList(),
+                ),
         ],
       ),
     );
@@ -526,17 +530,119 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
     );
   }
 
-  Widget _buildEmptyReels() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.play_circle_outline, size: 60, color: AppColors.neutral400),
-          SizedBox(height: 16),
-          Text('No reels yet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        ],
+  Widget _buildReelsGrid(List<PostModel> reels) {
+    if (reels.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.play_circle_outline, size: 60, color: AppColors.neutral400),
+            SizedBox(height: 16),
+            Text('No reels yet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      );
+    }
+
+    return GridView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 2,
+        mainAxisSpacing: 2,
+        childAspectRatio: 9 / 16,
       ),
+      itemCount: reels.length,
+      itemBuilder: (context, index) {
+        final reel = reels[index];
+        final thumbnailUrl = reel.thumbnailUrls.isNotEmpty
+            ? reel.thumbnailUrls[0]
+            : (reel.videoUrls.isNotEmpty ? reel.videoUrls[0] : '');
+
+        return GestureDetector(
+          onTap: () {
+            _postApiService.recordView(reel.id);
+            Navigator.of(context, rootNavigator: true).push(
+              MaterialPageRoute(
+                builder: (_) => PostDetailScreen(post: reel),
+              ),
+            );
+          },
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Container(
+                color: Colors.black,
+                child: thumbnailUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: thumbnailUrl,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => Container(color: AppColors.neutral700),
+                        errorWidget: (_, __, ___) => Container(
+                          color: AppColors.neutral700,
+                          child: const Icon(Icons.videocam_off, color: AppColors.neutral500),
+                        ),
+                      )
+                    : Container(
+                        color: AppColors.neutral700,
+                        child: const Icon(Icons.play_circle_outline,
+                            color: AppColors.neutral500, size: 32),
+                      ),
+              ),
+              // Gradient scrim
+              const Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: 40,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.transparent, Colors.black54],
+                    ),
+                  ),
+                ),
+              ),
+              // Views count
+              Positioned(
+                bottom: 5,
+                left: 5,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 14),
+                    const SizedBox(width: 2),
+                    Text(
+                      _formatViews(reel.viewsCount),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        shadows: [Shadow(blurRadius: 4, color: Colors.black54)],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
+  }
+
+  String _formatViews(int count) {
+    if (count >= 1000000) {
+      final m = count / 1000000;
+      return '${m % 1 == 0 ? m.toInt() : m.toStringAsFixed(1)}M';
+    }
+    if (count >= 1000) {
+      final k = count / 1000;
+      return '${k % 1 == 0 ? k.toInt() : k.toStringAsFixed(1)}K';
+    }
+    return count.toString();
   }
 
   void _showAvatarZoom(UserModel user) {
