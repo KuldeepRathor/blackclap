@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 
 import '../../../config/app_url.dart';
 import '../../../constants/color_constants.dart';
+import '../../../utils/theme_colors.dart';
 import '../../../models/user_model.dart';
 import '../../../services/token_storage.dart';
 
@@ -145,20 +146,18 @@ class _FollowListScreenState extends State<FollowListScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.background,
         title: Text(
           '@${widget.username}',
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: AppColors.onSurface,
+            color: context.primaryText,
           ),
         ),
         bottom: TabBar(
           controller: _tabController,
           labelColor: AppColors.accent,
-          unselectedLabelColor: AppColors.neutral200,
+          unselectedLabelColor: context.secondaryText,
           indicatorColor: AppColors.accent,
           tabs: const [
             Tab(text: 'Followers'),
@@ -203,11 +202,11 @@ class _FollowListScreenState extends State<FollowListScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline,
-                size: 48, color: AppColors.neutral400),
+            Icon(Icons.error_outline,
+                size: 48, color: context.iconColor),
             const SizedBox(height: 12),
-            const Text('Failed to load',
-                style: TextStyle(color: AppColors.neutral200)),
+            Text('Failed to load',
+                style: TextStyle(color: context.secondaryText)),
             const SizedBox(height: 16),
             ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
           ],
@@ -217,7 +216,7 @@ class _FollowListScreenState extends State<FollowListScreen>
     if (users.isEmpty) {
       return Center(
         child: Text(emptyMessage,
-            style: const TextStyle(color: AppColors.neutral200)),
+            style: TextStyle(color: context.secondaryText)),
       );
     }
     return ListView.builder(
@@ -232,26 +231,26 @@ class _FollowListScreenState extends State<FollowListScreen>
       leading: _avatar(user),
       title: Text(
         user.fullName.isNotEmpty ? user.fullName : user.username,
-        style: const TextStyle(
-            fontWeight: FontWeight.bold, color: AppColors.onSurface),
+        style: TextStyle(
+            fontWeight: FontWeight.bold, color: context.primaryText),
       ),
       subtitle: Text(
         '@${user.username}',
-        style: const TextStyle(color: AppColors.neutral200, fontSize: 13),
+        style: TextStyle(color: context.secondaryText, fontSize: 13),
       ),
       trailing: user.isFollowing
           ? OutlinedButton(
               onPressed: null,
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: AppColors.neutral500),
+                side: BorderSide(color: context.iconColor),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text('Following',
+              child: Text('Following',
                   style:
-                      TextStyle(fontSize: 12, color: AppColors.neutral200)),
+                      TextStyle(fontSize: 12, color: context.secondaryText)),
             )
           : null,
       onTap: () => context.push('/profile/${user.username}'),

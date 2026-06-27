@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../constants/color_constants.dart';
 import '../../models/conversation_model.dart';
+import '../../utils/theme_colors.dart';
 
 class ConversationTile extends StatelessWidget {
   final ConversationModel conversation;
@@ -77,7 +78,7 @@ class ConversationTile extends StatelessWidget {
                           color: AppColors.accent,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: AppColors.background,
+                            color: Theme.of(context).scaffoldBackgroundColor,
                             width: 2,
                           ),
                         ),
@@ -100,7 +101,7 @@ class ConversationTile extends StatelessWidget {
                             name,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: AppColors.onSurface,
+                              color: context.primaryText,
                               fontWeight: hasUnread
                                   ? FontWeight.bold
                                   : FontWeight.w500,
@@ -115,7 +116,7 @@ class ConversationTile extends StatelessWidget {
                             fontSize: 12,
                             color: hasUnread
                                 ? AppColors.accent
-                                : AppColors.neutral400,
+                                : context.mutedText,
                             fontWeight: hasUnread
                                 ? FontWeight.w600
                                 : FontWeight.normal,
@@ -133,8 +134,8 @@ class ConversationTile extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 13,
                               color: hasUnread
-                                  ? AppColors.neutral100
-                                  : AppColors.neutral300,
+                                  ? context.primaryText
+                                  : context.mutedText,
                               fontWeight: hasUnread
                                   ? FontWeight.w500
                                   : FontWeight.normal,

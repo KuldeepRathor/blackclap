@@ -7,6 +7,7 @@ import '../../../blocs/auth/auth_event.dart';
 import '../../../blocs/auth/auth_state.dart';
 import '../../../repositories/user_repository.dart';
 import '../../../constants/color_constants.dart';
+import '../../../utils/theme_colors.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -160,20 +161,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         }
 
         return Scaffold(
-          backgroundColor: AppColors.background,
           appBar: AppBar(
-            backgroundColor: AppColors.background,
             elevation: 0,
             leading: IconButton(
-              icon: const Icon(Icons.close, color: AppColors.onSurface),
+              icon: Icon(Icons.close, color: context.primaryText),
               onPressed: () => Navigator.pop(context),
             ),
-            title: const Text(
+            title: Text(
               'Edit profile',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
-                color: AppColors.onSurface,
+                color: context.primaryText,
               ),
             ),
             actions: [

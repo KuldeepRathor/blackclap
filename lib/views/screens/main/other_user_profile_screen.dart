@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../constants/color_constants.dart';
+import '../../../utils/theme_colors.dart';
 import '../../../models/post_model.dart';
 import '../../../models/user_model.dart';
 import '../../../repositories/chat_repository.dart';
@@ -161,24 +162,22 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.background,
         elevation: 0,
         title: Text(
           widget.username,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: AppColors.onSurface,
+            color: context.primaryText,
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
+          icon: Icon(Icons.arrow_back, color: context.primaryText),
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.more_vert, color: AppColors.onSurface),
+            icon: Icon(Icons.more_vert, color: context.primaryText),
             onPressed: _showOptionsMenu,
           ),
         ],
@@ -196,9 +195,9 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.person_off_outlined, size: 60, color: AppColors.neutral400),
+          Icon(Icons.person_off_outlined, size: 60, color: context.iconColor),
           const SizedBox(height: 16),
-          Text(_errorMessage, style: const TextStyle(fontSize: 18, color: AppColors.neutral200)),
+          Text(_errorMessage, style: TextStyle(fontSize: 18, color: context.secondaryText)),
         ],
       ),
     );
@@ -270,19 +269,19 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
                               if (user.fullName.isNotEmpty)
                                 Text(
                                   user.fullName,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 15,
-                                    color: AppColors.onSurface,
+                                    color: context.primaryText,
                                   ),
                                 ),
                               if (user.bio.isNotEmpty) ...[
                                 const SizedBox(height: 4),
                                 Text(
                                   user.bio,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 13.5,
-                                    color: AppColors.onSurface,
+                                    color: context.primaryText,
                                   ),
                                 ),
                               ],
@@ -304,25 +303,25 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
                             child: OutlinedButton(
                               onPressed: _openingDm ? null : _openDM,
                               style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: AppColors.neutral400),
+                                side: BorderSide(color: context.iconColor),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 padding: const EdgeInsets.symmetric(vertical: 10),
                               ),
                               child: _openingDm
-                                  ? const SizedBox(
+                                  ? SizedBox(
                                       width: 16,
                                       height: 16,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        color: AppColors.onSurface,
+                                        color: context.primaryText,
                                       ),
                                     )
-                                  : const Text(
+                                  : Text(
                                       'Message',
                                       style: TextStyle(
-                                        color: AppColors.onSurface,
+                                        color: context.primaryText,
                                         fontWeight: FontWeight.w600,
                                         fontSize: 13,
                                       ),
@@ -333,16 +332,16 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
                           OutlinedButton(
                             onPressed: _shareProfile,
                             style: OutlinedButton.styleFrom(
-                              side: BorderSide(color: AppColors.neutral400),
+                              side: BorderSide(color: context.iconColor),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               minimumSize: const Size(44, 40),
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.person_add_alt_1_outlined,
-                              color: AppColors.onSurface,
+                              color: context.primaryText,
                               size: 18,
                             ),
                           ),
@@ -357,7 +356,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
                   controller: _tabController,
                   indicatorColor: AppColors.accent,
                   labelColor: AppColors.accent,
-                  unselectedLabelColor: AppColors.neutral400,
+                  unselectedLabelColor: context.iconColor,
                   tabs: const [
                     Tab(icon: Icon(Icons.grid_on)),
                     Tab(icon: Icon(Icons.play_arrow_outlined)),
@@ -389,20 +388,20 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
       return OutlinedButton(
         onPressed: _followLoading ? null : _toggleFollow,
         style: OutlinedButton.styleFrom(
-          side: BorderSide(color: AppColors.neutral400),
+          side: BorderSide(color: context.iconColor),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           padding: const EdgeInsets.symmetric(vertical: 10),
         ),
         child: _followLoading
-            ? const SizedBox(
+            ? SizedBox(
                 width: 16,
                 height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onSurface),
+                child: CircularProgressIndicator(strokeWidth: 2, color: context.primaryText),
               )
-            : const Text(
+            : Text(
                 'Following',
                 style: TextStyle(
-                  color: AppColors.onSurface,
+                  color: context.primaryText,
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
                 ),
@@ -440,10 +439,10 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
         children: [
           Text(
             count,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: context.primaryText),
           ),
           const SizedBox(height: 2),
-          Text(label, style: const TextStyle(fontSize: 13, color: AppColors.neutral200)),
+          Text(label, style: TextStyle(fontSize: 13, color: context.secondaryText)),
         ],
       ),
     );
@@ -451,13 +450,13 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
 
   Widget _buildPostsGrid() {
     if (_posts.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.camera_alt_outlined, size: 60, color: AppColors.neutral400),
-            SizedBox(height: 16),
-            Text('No posts yet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Icon(Icons.camera_alt_outlined, size: 60, color: context.iconColor),
+            const SizedBox(height: 16),
+            const Text('No posts yet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ],
         ),
       );
@@ -488,25 +487,25 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
             fit: StackFit.expand,
             children: [
               Container(
-                color: AppColors.neutral600,
+                color: context.shimmerBase,
                 child: thumbUrl.isNotEmpty
                     ? CachedNetworkImage(
                         imageUrl: thumbUrl,
                         fit: BoxFit.cover,
-                        placeholder: (_, __) => Container(color: AppColors.neutral600),
+                        placeholder: (_, __) => Container(color: context.shimmerBase),
                         errorWidget: (_, __, ___) => Container(
-                          color: AppColors.neutral600,
+                          color: context.shimmerBase,
                           child: Icon(
                             isVideo ? Icons.videocam_off : Icons.image_not_supported,
-                            color: AppColors.neutral500,
+                            color: context.iconColor,
                           ),
                         ),
                       )
                     : Container(
-                        color: AppColors.neutral800,
+                        color: context.shimmerHighlight,
                         child: Icon(
                           isVideo ? Icons.play_circle_outline : Icons.image,
-                          color: AppColors.neutral500,
+                          color: context.iconColor,
                           size: 32,
                         ),
                       ),
@@ -532,13 +531,13 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
 
   Widget _buildReelsGrid(List<PostModel> reels) {
     if (reels.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.play_circle_outline, size: 60, color: AppColors.neutral400),
-            SizedBox(height: 16),
-            Text('No reels yet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Icon(Icons.play_circle_outline, size: 60, color: context.iconColor),
+            const SizedBox(height: 16),
+            const Text('No reels yet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ],
         ),
       );
@@ -577,16 +576,16 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
                     ? CachedNetworkImage(
                         imageUrl: thumbnailUrl,
                         fit: BoxFit.cover,
-                        placeholder: (_, __) => Container(color: AppColors.neutral700),
+                        placeholder: (_, __) => Container(color: context.shimmerBase),
                         errorWidget: (_, __, ___) => Container(
-                          color: AppColors.neutral700,
-                          child: const Icon(Icons.videocam_off, color: AppColors.neutral500),
+                          color: context.shimmerBase,
+                          child: Icon(Icons.videocam_off, color: context.iconColor),
                         ),
                       )
                     : Container(
-                        color: AppColors.neutral700,
-                        child: const Icon(Icons.play_circle_outline,
-                            color: AppColors.neutral500, size: 32),
+                        color: context.shimmerBase,
+                        child: Icon(Icons.play_circle_outline,
+                            color: context.iconColor, size: 32),
                       ),
               ),
               // Gradient scrim
@@ -701,7 +700,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
               height: 4,
               margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: AppColors.neutral600,
+                color: context.dividerColor,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),

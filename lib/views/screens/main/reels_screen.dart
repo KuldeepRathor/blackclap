@@ -12,6 +12,7 @@ import '../../../models/post_model.dart';
 import '../../../services/api_service.dart';
 import '../../../services/post_api_service.dart';
 import '../../../services/interaction_api_service.dart';
+import '../../../services/video_cache_manager.dart';
 import '../../widgets/comments_sheet.dart';
 import 'other_user_profile_screen.dart';
 
@@ -31,6 +32,8 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
   bool _isLoading = true;
   String? _error;
+  bool _hasMore = true;
+  bool _isLoadingMore = false;
   final Map<int, VideoPlayerController> _controllers = {};
 
   @override
@@ -87,9 +90,10 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
     setState(() {
       _isLoading = true;
       _error = null;
+      _hasMore = true;
     });
     try {
-      final raw = await _postApiService.getReels(limit: 30);
+      final raw = await _postApiService.getReels(limit: 20);
       if (!mounted) return;
       final posts = raw
           .map((m) => PostModel.fromApiResponse(m))
@@ -101,6 +105,7 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
       });
       if (_reels.isNotEmpty) {
         _initializeVideo(0);
+        _initializeVideo(1);
       }
     } catch (e) {
       debugPrint('Error loading reels: $e');
@@ -112,12 +117,53 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _loadMoreReels() async {
+    if (_isLoadingMore || !_hasMore || _reels.isEmpty) return;
+    setState(() => _isLoadingMore = true);
+    try {
+      final cursor = _reels.last.createdAt.toUtc().toIso8601String();
+      final raw = await _postApiService.getReels(limit: 20, cursor: cursor);
+      if (!mounted) return;
+      final newPosts = raw
+          .map((m) => PostModel.fromApiResponse(m))
+          .where((p) => p.videoUrls.isNotEmpty)
+          .toList();
+      if (newPosts.isEmpty) {
+        setState(() {
+          _hasMore = false;
+          _isLoadingMore = false;
+        });
+        return;
+      }
+      setState(() {
+        _reels.addAll(newPosts);
+        _isLoadingMore = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading more reels: $e');
+      if (!mounted) return;
+      setState(() => _isLoadingMore = false);
+    }
+  }
+
   Future<void> _initializeVideo(int index) async {
     if (_controllers.containsKey(index)) return;
-    if (index >= _reels.length) return;
+    if (index < 0 || index >= _reels.length) return;
 
     final videoUrl = _reels[index].videoUrls.first;
-    final controller = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
+
+    VideoPlayerController controller;
+    // Use cached local file if available — instant start, no network round-trip
+    final cached = await VideoCacheManager.instance.getFileFromCache(videoUrl);
+    if (cached != null) {
+      controller = VideoPlayerController.file(cached.file);
+    } else {
+      controller = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
+      // Background-cache this video so the next visit is instant
+      // ignore: discarded_futures
+      VideoCacheManager.instance.downloadFile(videoUrl);
+    }
+
     _controllers[index] = controller;
 
     try {
@@ -131,9 +177,19 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
     } catch (e) {
       debugPrint('Error initializing video at index $index: $e');
     }
+  }
 
-    if (mounted && index + 1 < _reels.length) {
-      _initializeVideo(index + 1);
+  void _disposeOutOfRange(int current) {
+    final keep = <int>{
+      if (current - 1 >= 0) current - 1,
+      current,
+      if (current + 1 < _reels.length) current + 1,
+      if (current + 2 < _reels.length) current + 2,
+    };
+    final toDispose = _controllers.keys.where((k) => !keep.contains(k)).toList();
+    for (final k in toDispose) {
+      _controllers[k]?.dispose();
+      _controllers.remove(k);
     }
   }
 
@@ -141,8 +197,20 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
     _controllers[_currentIndex]?.pause();
     setState(() => _currentIndex = index);
     _controllers[index]?.play();
-    if (index + 1 < _reels.length && !_controllers.containsKey(index + 1)) {
-      _initializeVideo(index + 1);
+
+    // Preload the next two reels
+    for (final next in [index + 1, index + 2]) {
+      if (next < _reels.length && !_controllers.containsKey(next)) {
+        _initializeVideo(next);
+      }
+    }
+
+    // Release controllers outside the sliding window [index-1 … index+2]
+    _disposeOutOfRange(index);
+
+    // Fetch more reels when 5 away from the end
+    if (index >= _reels.length - 5) {
+      _loadMoreReels();
     }
   }
 

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../blocs/auth/auth_bloc.dart';
 import '../../../blocs/auth/auth_state.dart';
-import '../../../constants/color_constants.dart';
+import '../../../utils/theme_colors.dart';
 import '../../../models/post_model.dart';
 import '../../widgets/post_card.dart';
 
@@ -15,19 +15,17 @@ class PostDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.background,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
+          icon: Icon(Icons.arrow_back, color: context.primaryText),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
+        title: Text(
           'Post',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: AppColors.onSurface,
+            color: context.primaryText,
           ),
         ),
       ),

@@ -109,11 +109,17 @@ class PostApiService {
   }
 
   /// Fetch video posts for the reels feed, newest first.
+  /// Pass [cursor] (ISO-8601 UTC timestamp of the last reel received) for
+  /// subsequent pages; omit for the first page.
   Future<List<Map<String, dynamic>>> getReels({
     int limit = 20,
-    int offset = 0,
+    String? cursor,
   }) async {
-    final list = await _api.getList('/posts/reels?limit=$limit&offset=$offset');
+    String url = '/posts/reels?limit=$limit';
+    if (cursor != null) {
+      url += '&cursor=${Uri.encodeComponent(cursor)}';
+    }
+    final list = await _api.getList(url);
     return list.cast<Map<String, dynamic>>();
   }
 

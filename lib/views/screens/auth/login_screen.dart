@@ -5,6 +5,7 @@ import '../../../blocs/auth/auth_bloc.dart';
 import '../../../blocs/auth/auth_event.dart';
 import '../../../blocs/auth/auth_state.dart';
 import '../../../constants/color_constants.dart';
+import '../../../utils/theme_colors.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -40,7 +41,6 @@ class _LoginScreenState extends State<LoginScreen> {
       },
       builder: (context, state) {
         return Scaffold(
-          backgroundColor: AppColors.background,
           body: SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -61,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     'Connect with friends and share moments',
                     style: TextStyle(
                       fontSize: 16,
-                      color: AppColors.onSurface,
+                      color: context.primaryText,
                     ),
                   ),
                   const SizedBox(height: 64),
@@ -168,9 +168,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       context.go('/signup');
                     },
                     child: RichText(
-                      text: const TextSpan(
+                      text: TextSpan(
                         text: "Don't have an account? ",
-                        style: TextStyle(color: AppColors.onSurface),
+                        style: TextStyle(color: context.primaryText),
                         children: [
                           TextSpan(
                             text: 'Sign Up',
