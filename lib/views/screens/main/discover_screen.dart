@@ -8,7 +8,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../blocs/search/search_bloc.dart';
 import '../../../constants/color_constants.dart';
-import '../../../models/post_model.dart';
 import '../../../models/user_model.dart';
 import '../../../services/api_service.dart';
 import '../../../services/post_api_service.dart';

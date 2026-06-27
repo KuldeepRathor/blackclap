@@ -76,6 +76,10 @@ class AppColors {
     end: Alignment.bottomRight,
   );
 
+  // Border Colors
+  static const Color lightBorder = Color(0xFF2A2A2A); // Subtle border for dark theme
+  static const Color lightIconMuted = Color(0xFF737373); // Muted icon color
+
   // Shadows
   static const Color shadow = Color(0x40000000);
   static const Color shadowMedium = Color(0x66000000);
