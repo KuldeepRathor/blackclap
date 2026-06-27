@@ -17,7 +17,15 @@ class AppUrl {
     return 'http://$_devHost:$_devPort';
   }
 
+  static String get _wsHost {
+    if (_isProduction) return 'wss://$_prodHost';
+    return 'ws://$_devHost:$_devPort';
+  }
+
   static String get baseUrl => '$_host/api/v1';
+
+  /// WebSocket base, derived from the same host so dev/prod stay in sync.
+  static String get wsBaseUrl => '$_wsHost/api/v1';
 
   // ─── Auth ────────────────────────────────────────────────────────────────
 
@@ -53,4 +61,11 @@ class AppUrl {
   /// POST body: { "filename": "photo.jpg", "upload_type": "profile_image" }
   /// Response: { "upload_url", "blob_url", "blob_name", "content_type", "expires_in_seconds" }
   static String get uploadUrl => '$baseUrl/uploads/url';
+
+  // ─── Chat ────────────────────────────────────────────────────────────────
+
+  /// REST chat paths are passed as relative strings to ApiService (which
+  /// prepends baseUrl); only the WebSocket needs a full URL here.
+  /// JWT is passed as a query param because WS clients can't set headers.
+  static String get chatSocket => '$wsBaseUrl/ws/chat';
 }

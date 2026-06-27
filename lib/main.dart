@@ -8,17 +8,22 @@ import 'views/screens/main/feed_screen.dart';
 import 'views/screens/main/discover_screen.dart';
 import 'views/screens/main/profile_screen.dart';
 import 'views/screens/main/create_post_screen.dart';
+import 'views/screens/main/messages_screen.dart';
 import 'views/screens/main/stories_screen.dart';
 import 'views/screens/main/reels_screen.dart';
 import 'views/screens/main/edit_profile_screen.dart';
 import 'views/screens/main/other_user_profile_screen.dart';
 import 'views/screens/main/follow_list_screen.dart';
+import 'views/screens/main/chat_screen.dart';
+import 'views/screens/main/new_message_screen.dart';
 import 'blocs/auth/auth_bloc.dart';
 import 'blocs/auth/auth_event.dart';
 import 'blocs/auth/auth_state.dart';
 import 'blocs/posts/posts_bloc.dart';
 import 'repositories/user_repository.dart';
 import 'repositories/post_repository.dart';
+import 'repositories/chat_repository.dart';
+import 'models/conversation_model.dart';
 import 'constants/color_constants.dart';
 // import 'package:firebase_core/firebase_core.dart';
 // import 'firebase_options.dart';
@@ -44,6 +49,9 @@ class BlackClapApp extends StatelessWidget {
         RepositoryProvider<PostRepository>(
           create: (context) => PostRepository(),
         ),
+        RepositoryProvider<ChatRepository>(
+          create: (context) => ChatRepository(),
+        ),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -58,13 +66,26 @@ class BlackClapApp extends StatelessWidget {
             ),
           ),
         ],
-        child: BlocBuilder<AuthBloc, AuthState>(
-          // Only recreate the GoRouter when authentication STATUS changes,
-          // not on every user-data refresh (avoids navigation reset on getProfile() calls).
-          buildWhen: (previous, current) =>
+        child: BlocListener<AuthBloc, AuthState>(
+          // Open the chat WebSocket once authenticated; close it on logout so
+          // the unread badge / live delivery follow the session lifecycle.
+          listenWhen: (previous, current) =>
               previous.runtimeType != current.runtimeType,
-          builder: (context, state) {
-            return MaterialApp.router(
+          listener: (context, state) {
+            final chatRepo = context.read<ChatRepository>();
+            if (state is AuthAuthenticated) {
+              chatRepo.connectSocket();
+            } else if (state is AuthUnauthenticated) {
+              chatRepo.disconnectSocket();
+            }
+          },
+          child: BlocBuilder<AuthBloc, AuthState>(
+            // Only recreate the GoRouter when authentication STATUS changes,
+            // not on every user-data refresh (avoids navigation reset on getProfile() calls).
+            buildWhen: (previous, current) =>
+                previous.runtimeType != current.runtimeType,
+            builder: (context, state) {
+              return MaterialApp.router(
               debugShowCheckedModeBanner: false,
               title: 'Blackclap',
               theme: ThemeData(
@@ -110,9 +131,10 @@ class BlackClapApp extends StatelessWidget {
               routerConfig: _createRouter(state),
             );
           },
-        ),
-      ),
-    );
+          ), // BlocBuilder
+        ), // BlocListener
+      ), // MultiBlocProvider
+    ); // MultiRepositoryProvider
   }
 
   GoRouter _createRouter(AuthState authState) {
@@ -147,6 +169,10 @@ class BlackClapApp extends StatelessWidget {
           builder: (context, state) => const MainNavigationWrapper(),
         ),
         GoRoute(
+          path: '/create-post',
+          builder: (context, state) => const CreatePostScreen(),
+        ),
+        GoRoute(
           path: '/stories',
           builder: (context, state) => const StoriesScreen(),
         ),
@@ -175,6 +201,21 @@ class BlackClapApp extends StatelessWidget {
             return FollowListScreen(username: username, initialTab: tab);
           },
         ),
+        GoRoute(
+          path: '/chat/:conversationId',
+          builder: (context, state) {
+            final conversationId = state.pathParameters['conversationId']!;
+            final conversation = state.extra as ConversationModel?;
+            return ChatScreen(
+              conversationId: conversationId,
+              conversation: conversation,
+            );
+          },
+        ),
+        GoRoute(
+          path: '/new-message',
+          builder: (context, state) => const NewMessageScreen(),
+        ),
       ],
     );
   }
@@ -200,7 +241,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
     return [
       const FeedScreen(),
       const DiscoverScreen(),
-      const CreatePostScreen(),
+      const MessagesScreen(),
       const ReelsScreen(),
       const ProfileScreen(),
     ];
@@ -221,11 +262,10 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
         inactiveColorPrimary: AppColors.neutral400,
       ),
       PersistentBottomNavBarItem(
-        icon: const Icon(Icons.add_box),
-        inactiveIcon: const Icon(Icons.add_box_outlined),
+        icon: const Icon(Icons.chat_bubble),
+        inactiveIcon: const Icon(Icons.chat_bubble_outline),
         activeColorPrimary: AppColors.accent,
         inactiveColorPrimary: AppColors.neutral400,
-        iconSize: 38,
       ),
       PersistentBottomNavBarItem(
         icon: const Icon(Icons.play_circle_filled),

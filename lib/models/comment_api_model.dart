@@ -35,4 +35,16 @@ class CommentApiModel {
       createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
     );
   }
+
+  CommentApiModel copyWith({int? repliesCount}) => CommentApiModel(
+        id: id,
+        postId: postId,
+        userId: userId,
+        username: username,
+        avatarUrl: avatarUrl,
+        content: content,
+        parentId: parentId,
+        repliesCount: repliesCount ?? this.repliesCount,
+        createdAt: createdAt,
+      );
 }
