@@ -315,7 +315,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
   }
 }
 
-/// Chat tab icon with an unread dot badge.
+/// Chat tab icon with an unread count badge.
 class _ChatTabIcon extends StatelessWidget {
   final int unread;
   final bool filled;
@@ -324,33 +324,41 @@ class _ChatTabIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Icon(filled ? Icons.chat_bubble : Icons.chat_bubble_outline),
-        if (unread > 0)
-          Positioned(
-            top: -3,
-            right: -6,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-              decoration: BoxDecoration(
-                color: AppColors.accent,
-                borderRadius: BorderRadius.circular(7),
-              ),
-              constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
-              child: Text(
-                unread > 9 ? '9+' : '$unread',
-                style: const TextStyle(
-                  fontSize: 8,
-                  color: AppColors.onAccent,
-                  fontWeight: FontWeight.bold,
+    // SizedBox fixes the layout footprint to match a plain Icon so the nav bar
+    // doesn't shift this item relative to its neighbours.
+    return SizedBox(
+      width: 28,
+      height: 28,
+      child: Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          Icon(filled ? Icons.chat_bubble : Icons.chat_bubble_outline),
+          if (unread > 0)
+            Positioned(
+              top: 1,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                decoration: BoxDecoration(
+                  color: AppColors.accent,
+                  borderRadius: BorderRadius.circular(6),
                 ),
-                textAlign: TextAlign.center,
+                constraints:
+                    const BoxConstraints(minWidth: 13, minHeight: 13),
+                child: Text(
+                  unread > 9 ? '9+' : '$unread',
+                  style: const TextStyle(
+                    fontSize: 7,
+                    color: AppColors.onAccent,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }
