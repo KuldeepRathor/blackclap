@@ -41,6 +41,12 @@ class AppUrl {
 
   // ─── Uploads ─────────────────────────────────────────────────────────────
 
+  // ─── Search ───────────────────────────────────────────────────────────────
+
+  static String get search => '$baseUrl/search';
+
+  // ─── Uploads ─────────────────────────────────────────────────────────────
+
   /// Request a short-lived SAS upload URL from Azure Blob Storage.
   /// POST body: { "filename": "photo.jpg", "upload_type": "profile_image" }
   /// Response: { "upload_url", "blob_url", "blob_name", "content_type", "expires_in_seconds" }

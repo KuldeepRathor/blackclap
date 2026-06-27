@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
+import '../services/search_api_service.dart';
 import '../services/token_storage.dart';
 import 'mock_data_service.dart';
 
@@ -53,8 +54,12 @@ class UserRepository implements UserRepositoryInterface {
 
   @override
   Future<List<UserModel>> searchUsers(String query) async {
-    final userData = MockDataService.searchUsers(query);
-    return userData.map((user) => UserModel.fromMap(user)).toList();
+    if (query.trim().length < 2) return [];
+    final result = await SearchApiService(_apiService).search(
+      query: query,
+      type: 'users',
+    );
+    return result.users;
   }
 
   @override

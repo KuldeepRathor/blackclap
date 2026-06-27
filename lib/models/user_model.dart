@@ -16,6 +16,7 @@ class UserModel extends Equatable {
   final int? postsCount;
   final int? followersCount;
   final int? followingCount;
+  final bool isFollowing;
 
   const UserModel({
     required this.uid,
@@ -33,6 +34,7 @@ class UserModel extends Equatable {
     this.postsCount,
     this.followersCount,
     this.followingCount,
+    this.isFollowing = false,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
@@ -67,6 +69,7 @@ class UserModel extends Equatable {
       postsCount: map['posts_count'] ?? map['postsCount'],
       followersCount: map['followers_count'] ?? map['followersCount'],
       followingCount: map['following_count'] ?? map['followingCount'],
+      isFollowing: map['is_following'] ?? false,
     );
   }
 
@@ -87,6 +90,7 @@ class UserModel extends Equatable {
       'postsCount': postsCount,
       'followersCount': followersCount,
       'followingCount': followingCount,
+      'isFollowing': isFollowing,
     };
   }
 
@@ -106,6 +110,7 @@ class UserModel extends Equatable {
     int? postsCount,
     int? followersCount,
     int? followingCount,
+    bool? isFollowing,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -123,6 +128,7 @@ class UserModel extends Equatable {
       postsCount: postsCount ?? this.postsCount,
       followersCount: followersCount ?? this.followersCount,
       followingCount: followingCount ?? this.followingCount,
+      isFollowing: isFollowing ?? this.isFollowing,
     );
   }
 
@@ -143,5 +149,6 @@ class UserModel extends Equatable {
         postsCount,
         followersCount,
         followingCount,
+        isFollowing,
       ];
 }
