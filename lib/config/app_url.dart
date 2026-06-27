@@ -38,6 +38,8 @@ class AppUrl {
 
   static String followUser(String username) => '$baseUrl/follows/$username';
   static String unfollowUser(String username) => '$baseUrl/follows/$username';
+  static String followers(String username) => '$baseUrl/follows/$username/followers';
+  static String following(String username) => '$baseUrl/follows/$username/following';
 
   // ─── Uploads ─────────────────────────────────────────────────────────────
 

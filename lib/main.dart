@@ -12,6 +12,7 @@ import 'views/screens/main/stories_screen.dart';
 import 'views/screens/main/reels_screen.dart';
 import 'views/screens/main/edit_profile_screen.dart';
 import 'views/screens/main/other_user_profile_screen.dart';
+import 'views/screens/main/follow_list_screen.dart';
 import 'blocs/auth/auth_bloc.dart';
 import 'blocs/auth/auth_event.dart';
 import 'blocs/auth/auth_state.dart';
@@ -162,6 +163,16 @@ class BlackClapApp extends StatelessWidget {
           builder: (context, state) {
             final username = state.pathParameters['username']!;
             return OtherUserProfileScreen(username: username);
+          },
+        ),
+        GoRoute(
+          path: '/follow-list/:username',
+          builder: (context, state) {
+            final username = state.pathParameters['username']!;
+            final tab = int.tryParse(
+                    state.uri.queryParameters['tab'] ?? '0') ??
+                0;
+            return FollowListScreen(username: username, initialTab: tab);
           },
         ),
       ],

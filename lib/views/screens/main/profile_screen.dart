@@ -231,10 +231,14 @@ class _ProfileScreenState extends State<ProfileScreen>
                                   _buildStatColumn(
                                     (user.followersCount ?? user.followers.length).toString(),
                                     'Followers',
+                                    onTap: () => context.push(
+                                        '/follow-list/${user.username}?tab=0'),
                                   ),
                                   _buildStatColumn(
                                     (user.followingCount ?? user.following.length).toString(),
                                     'Following',
+                                    onTap: () => context.push(
+                                        '/follow-list/${user.username}?tab=1'),
                                   ),
                                 ],
                               ),
@@ -414,11 +418,9 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildStatColumn(String count, String label) {
+  Widget _buildStatColumn(String count, String label, {VoidCallback? onTap}) {
     return GestureDetector(
-      onTap: () {
-        // Navigate to followers/following list
-      },
+      onTap: onTap,
       child: Column(
         children: [
           Text(
