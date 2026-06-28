@@ -10,7 +10,7 @@ class AppUrl {
   // Update _prodHost when deploying to production
   static const String _prodHost = 'api.blackclap.com';
 
-  static const bool _isProduction = true; // toggle for prod builds
+  static const bool _isProduction = false; // toggle for prod builds
 
   static String get _host {
     if (_isProduction) return 'https://$_prodHost';

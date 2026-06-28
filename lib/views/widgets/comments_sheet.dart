@@ -101,9 +101,6 @@ class _CommentsSheetState extends State<CommentsSheet> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
-  // Controls the draggable sheet so we can expand it when keyboard shows.
-  final DraggableScrollableController _sheetController =
-      DraggableScrollableController();
   final InteractionApiService _service = InteractionApiService(ApiService());
 
   @override
@@ -112,7 +109,6 @@ class _CommentsSheetState extends State<CommentsSheet> {
     _localCount = widget.post.commentsCount;
     _loadComments();
     _scrollController.addListener(_onScroll);
-    _focusNode.addListener(_onFocusChange);
   }
 
   @override
@@ -120,20 +116,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
     _controller.dispose();
     _focusNode.dispose();
     _scrollController.dispose();
-    _sheetController.dispose();
     super.dispose();
-  }
-
-  // When the user taps the input, expand the sheet to near-full before the
-  // keyboard rises so the list stays visible and the input clears the keyboard.
-  void _onFocusChange() {
-    if (_focusNode.hasFocus && _sheetController.isAttached) {
-      _sheetController.animateTo(
-        0.92,
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-      );
-    }
   }
 
   // -------------------------------------------------------------------------
@@ -335,7 +318,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
       _replyingToCommentId = commentId;
       _replyingToUsername = username;
     });
-    _focusNode.requestFocus(); // triggers _onFocusChange → sheet expands
+    _focusNode.requestFocus(); // raise the keyboard so the user can reply
   }
 
   void _toggleReplies(_CommentThread thread) {

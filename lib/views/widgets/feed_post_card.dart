@@ -155,6 +155,10 @@ class _FeedPostCardState extends State<FeedPostCard>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      // Push on the root navigator so the sheet sits above PersistentTabView.
+      // The tab navigator strips the keyboard inset (viewInsets.bottom == 0),
+      // which would hide the input behind the keyboard; the root keeps it.
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       builder: (_) => CommentsSheet(
         post: post,

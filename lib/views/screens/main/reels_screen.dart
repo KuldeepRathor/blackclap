@@ -249,6 +249,10 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      // Push on the root navigator so the sheet sits above PersistentTabView.
+      // The tab navigator strips the keyboard inset (viewInsets.bottom == 0),
+      // which would hide the input behind the keyboard; the root keeps it.
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       builder: (_) => CommentsSheet(
         post: _reels[index],
