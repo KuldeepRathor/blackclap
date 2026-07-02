@@ -20,6 +20,7 @@ abstract class UserRepositoryInterface {
     required String fullName,
   });
   Future<void> signOut();
+  Future<void> deleteAccount();
   UserModel? getCurrentUser();
   Stream<UserModel?> get authStateChanges;
   
@@ -124,6 +125,14 @@ class UserRepository implements UserRepositoryInterface {
     await TokenStorage.clearTokens();
     _cachedUser = null;
     _authStateController.add(null);
+  }
+
+  @override
+  Future<void> deleteAccount() async {
+    // Soft-delete server-side, then sign out locally. Emitting null on the auth
+    // stream flips AuthBloc to AuthUnauthenticated, which sends the user to /login.
+    await _apiService.deleteMe();
+    await signOut();
   }
 
   @override

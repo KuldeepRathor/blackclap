@@ -1,11 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../blocs/theme/theme_cubit.dart';
 import '../../../constants/color_constants.dart';
+import '../../../repositories/user_repository.dart';
 
-class SettingsScreen extends StatelessWidget {
+Future<void> _openLink(String path) {
+  return launchUrl(
+    Uri.parse('https://blackclap.com$path'),
+    mode: LaunchMode.externalApplication,
+  );
+}
+
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -34,6 +48,11 @@ class SettingsScreen extends StatelessWidget {
             icon: Icons.security_outlined,
             label: 'Security',
             onTap: () {},
+          ),
+          _SettingsTile(
+            icon: Icons.person_remove_outlined,
+            label: 'Delete Account',
+            onTap: _confirmDeleteAccount,
           ),
           _SectionDivider(),
           _SectionHeader(label: 'Content'),
@@ -65,17 +84,89 @@ class SettingsScreen extends StatelessWidget {
           _SettingsTile(
             icon: Icons.description_outlined,
             label: 'Terms of Service',
-            onTap: () {},
+            onTap: () => _openLink('/terms'),
           ),
           _SettingsTile(
             icon: Icons.privacy_tip_outlined,
             label: 'Privacy Policy',
-            onTap: () {},
+            onTap: () => _openLink('/privacy'),
+          ),
+          _SettingsTile(
+            icon: Icons.groups_outlined,
+            label: 'Community Guidelines',
+            onTap: () => _openLink('/community-guidelines'),
+          ),
+          _SettingsTile(
+            icon: Icons.help_outline,
+            label: 'Help & Support',
+            onTap: () => _openLink('/support'),
           ),
           const SizedBox(height: 32),
         ],
       ),
     );
+  }
+
+  void _confirmDeleteAccount() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete account',
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text(
+          'Your account will be deactivated immediately and hidden from other '
+          'users.\n\nYou have 30 days to change your mind — just log back in to '
+          'restore it. After 30 days your profile, posts and activity are '
+          'permanently deleted.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppColors.neutral400)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _deleteAccount();
+            },
+            child: const Text('Delete account',
+                style: TextStyle(
+                    color: AppColors.error, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteAccount() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final repository = context.read<UserRepository>();
+
+    // Blocking progress indicator while the request is in flight.
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      await repository.deleteAccount();
+      // On success signOut() flips the auth state, so the GoRouter rebuilds and
+      // redirects to /login — this screen and the progress dialog are torn down.
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // dismiss progress dialog
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 }
 
