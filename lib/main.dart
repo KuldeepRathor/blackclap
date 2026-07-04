@@ -20,6 +20,7 @@ import 'views/screens/main/follow_list_screen.dart';
 import 'views/screens/main/chat_screen.dart';
 import 'views/screens/main/new_message_screen.dart';
 import 'views/screens/main/settings_screen.dart';
+import 'views/screens/main/blocked_users_screen.dart';
 import 'blocs/auth/auth_bloc.dart';
 import 'blocs/auth/auth_event.dart';
 import 'blocs/auth/auth_state.dart';
@@ -227,6 +228,10 @@ class BlackClapApp extends StatelessWidget {
         GoRoute(
           path: '/settings',
           builder: (context, state) => const SettingsScreen(),
+        ),
+        GoRoute(
+          path: '/blocked-users',
+          builder: (context, state) => const BlockedUsersScreen(),
         ),
       ],
     );
