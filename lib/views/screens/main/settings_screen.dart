@@ -1,10 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../blocs/theme/theme_cubit.dart';
 import '../../../constants/color_constants.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
+
+  // Legal & support pages hosted on the website.
+  static const String _termsUrl = 'https://blackclap.com/terms';
+  static const String _privacyUrl = 'https://blackclap.com/privacy';
+  static const String _communityGuidelinesUrl =
+      'https://blackclap.com/community-guidelines';
+  static const String _deleteAccountUrl = 'https://blackclap.com/delete-account';
+  static const String _supportUrl = 'https://blackclap.com/support';
+
+  Future<void> _openUrl(BuildContext context, String url) async {
+    final uri = Uri.parse(url);
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open the page. Please try again.')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +55,11 @@ class SettingsScreen extends StatelessWidget {
             label: 'Security',
             onTap: () {},
           ),
+          _SettingsTile(
+            icon: Icons.block_outlined,
+            label: 'Blocked Accounts',
+            onTap: () => context.push('/blocked-users'),
+          ),
           _SectionDivider(),
           _SectionHeader(label: 'Content'),
           _SettingsTile(
@@ -52,6 +77,33 @@ class SettingsScreen extends StatelessWidget {
             onTap: () {},
           ),
           _SectionDivider(),
+          _SectionHeader(label: 'Legal & Support'),
+          _SettingsTile(
+            icon: Icons.description_outlined,
+            label: 'Terms of Service',
+            onTap: () => _openUrl(context, _termsUrl),
+          ),
+          _SettingsTile(
+            icon: Icons.privacy_tip_outlined,
+            label: 'Privacy Policy',
+            onTap: () => _openUrl(context, _privacyUrl),
+          ),
+          _SettingsTile(
+            icon: Icons.groups_outlined,
+            label: 'Community Guidelines',
+            onTap: () => _openUrl(context, _communityGuidelinesUrl),
+          ),
+          _SettingsTile(
+            icon: Icons.help_outline,
+            label: 'Help & Support',
+            onTap: () => _openUrl(context, _supportUrl),
+          ),
+          _SettingsTile(
+            icon: Icons.delete_outline,
+            label: 'Delete Account',
+            onTap: () => _openUrl(context, _deleteAccountUrl),
+          ),
+          _SectionDivider(),
           _SectionHeader(label: 'About'),
           _SettingsTile(
             icon: Icons.info_outline,
@@ -60,16 +112,6 @@ class SettingsScreen extends StatelessWidget {
               '1.0.0',
               style: TextStyle(color: colors.onSurface.withValues(alpha: 0.5), fontSize: 14),
             ),
-            onTap: () {},
-          ),
-          _SettingsTile(
-            icon: Icons.description_outlined,
-            label: 'Terms of Service',
-            onTap: () {},
-          ),
-          _SettingsTile(
-            icon: Icons.privacy_tip_outlined,
-            label: 'Privacy Policy',
             onTap: () {},
           ),
           const SizedBox(height: 32),

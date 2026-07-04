@@ -9,6 +9,7 @@ import '../../services/api_service.dart';
 import '../../services/interaction_api_service.dart';
 import '../../services/post_api_service.dart';
 import 'comments_sheet.dart';
+import 'report_sheet.dart';
 
 class PostCard extends StatefulWidget {
   final PostModel post;
@@ -234,7 +235,14 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                 leading: const Icon(Icons.flag_outlined,
                     color: AppColors.neutral200),
                 title: const Text('Report'),
-                onTap: () => Navigator.pop(context),
+                onTap: () {
+                  Navigator.pop(context);
+                  showReportSheet(
+                    context,
+                    targetType: 'post',
+                    targetId: widget.post.id,
+                  );
+                },
               ),
             ],
             const SizedBox(height: 8),

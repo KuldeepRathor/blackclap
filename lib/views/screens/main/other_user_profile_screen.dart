@@ -10,7 +10,9 @@ import '../../../models/post_model.dart';
 import '../../../models/user_model.dart';
 import '../../../repositories/chat_repository.dart';
 import '../../../services/api_service.dart';
+import '../../../services/moderation_api_service.dart';
 import '../../../services/post_api_service.dart';
+import '../../widgets/report_sheet.dart';
 import 'post_detail_screen.dart';
 
 class OtherUserProfileScreen extends StatefulWidget {
@@ -27,6 +29,8 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
   late TabController _tabController;
   final ApiService _apiService = ApiService();
   late final PostApiService _postApiService = PostApiService(_apiService);
+  late final ModerationApiService _moderationApiService =
+      ModerationApiService(_apiService);
 
   UserModel? _user;
   List<PostModel> _posts = [];
@@ -691,7 +695,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => SafeArea(
+      builder: (sheetContext) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -700,7 +704,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
               height: 4,
               margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: context.dividerColor,
+                color: sheetContext.dividerColor,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -708,23 +712,89 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
               leading: const Icon(Icons.share_outlined),
               title: const Text('Share profile'),
               onTap: () {
-                Navigator.pop(context);
+                Navigator.pop(sheetContext);
                 _shareProfile();
               },
             ),
             ListTile(
               leading: const Icon(Icons.block_outlined, color: AppColors.error),
               title: const Text('Block user', style: TextStyle(color: AppColors.error)),
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _confirmBlock();
+              },
             ),
             ListTile(
               leading: const Icon(Icons.flag_outlined, color: AppColors.error),
               title: const Text('Report', style: TextStyle(color: AppColors.error)),
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                final user = _user;
+                if (user == null) return;
+                showReportSheet(context, targetType: 'user', targetId: user.uid);
+              },
             ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _confirmBlock() async {
+    final user = _user;
+    if (user == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Block user',
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(
+          '${user.username} won\'t be able to find your profile, posts, or '
+          'message you, and you won\'t see theirs. You can unblock them anytime.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppColors.neutral400)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Block',
+                style: TextStyle(
+                    color: AppColors.error, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await _blockUser();
+  }
+
+  Future<void> _blockUser() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    try {
+      await _moderationApiService.blockUser(widget.username);
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('User blocked'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      navigator.pop();
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 }
