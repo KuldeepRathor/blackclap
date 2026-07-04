@@ -22,6 +22,11 @@ abstract class UserRepositoryInterface {
   Future<void> signOut();
   UserModel? getCurrentUser();
   Stream<UserModel?> get authStateChanges;
+
+  // Password reset (OTP) flow
+  Future<void> requestPasswordReset(String email);
+  Future<void> verifyResetCode(String email, String code);
+  Future<void> confirmPasswordReset(String email, String code, String newPassword);
   
   // Custom API additions
   Future<UserModel?> getProfile();
@@ -129,6 +134,31 @@ class UserRepository implements UserRepositoryInterface {
   @override
   UserModel? getCurrentUser() {
     return _cachedUser;
+  }
+
+  // Password reset (OTP) flow — delegates to ApiService.
+
+  @override
+  Future<void> requestPasswordReset(String email) async {
+    await _apiService.requestPasswordReset(email);
+  }
+
+  @override
+  Future<void> verifyResetCode(String email, String code) async {
+    await _apiService.verifyResetCode(email: email, code: code);
+  }
+
+  @override
+  Future<void> confirmPasswordReset(
+    String email,
+    String code,
+    String newPassword,
+  ) async {
+    await _apiService.resetPassword(
+      email: email,
+      code: code,
+      newPassword: newPassword,
+    );
   }
 
   @override

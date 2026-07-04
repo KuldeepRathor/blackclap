@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:persistent_bottom_nav_bar/persistent_bottom_nav_bar.dart';
 import 'views/screens/auth/login_screen.dart';
 import 'views/screens/auth/signup_screen.dart';
+import 'views/screens/auth/forgot_password_email_screen.dart';
+import 'views/screens/auth/verify_reset_code_screen.dart';
+import 'views/screens/auth/reset_password_screen.dart';
 import 'views/screens/main/feed_screen.dart';
 import 'views/screens/main/discover_screen.dart';
 import 'views/screens/main/profile_screen.dart';
@@ -121,8 +124,15 @@ class BlackClapApp extends StatelessWidget {
         // Read current auth state at navigation time, not the stale closure value.
         final currentAuth = BlocProvider.of<AuthBloc>(context, listen: false).state;
         final isAuthenticated = currentAuth is AuthAuthenticated;
-        final isLoggingIn =
-            state.uri.path == '/login' || state.uri.path == '/signup';
+        // Public (unauthenticated) routes — login/signup and the password-reset flow.
+        const publicPaths = {
+          '/login',
+          '/signup',
+          '/forgot-password',
+          '/verify-reset-code',
+          '/reset-password',
+        };
+        final isLoggingIn = publicPaths.contains(state.uri.path);
 
         if (!isAuthenticated && !isLoggingIn) {
           return '/login';
@@ -140,6 +150,27 @@ class BlackClapApp extends StatelessWidget {
         GoRoute(
           path: '/signup',
           builder: (context, state) => const SignupScreen(),
+        ),
+        GoRoute(
+          path: '/forgot-password',
+          builder: (context, state) => const ForgotPasswordEmailScreen(),
+        ),
+        GoRoute(
+          path: '/verify-reset-code',
+          builder: (context, state) {
+            final email = state.extra as String? ?? '';
+            return VerifyResetCodeScreen(email: email);
+          },
+        ),
+        GoRoute(
+          path: '/reset-password',
+          builder: (context, state) {
+            final args = (state.extra as Map?) ?? const {};
+            return ResetPasswordScreen(
+              email: args['email'] as String? ?? '',
+              code: args['code'] as String? ?? '',
+            );
+          },
         ),
         GoRoute(
           path: '/home',
