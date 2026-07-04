@@ -36,6 +36,21 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   bool _isLoadingMore = false;
   final Map<int, VideoPlayerController> _controllers = {};
 
+  // True only while this screen is actually on screen (tab selected, no route
+  // pushed on top). Every play() must go through _canPlay — async video
+  // initialization and lifecycle/visibility callbacks can otherwise start
+  // audio while the user is on another tab or screen.
+  bool _isScreenVisible = true;
+  bool _commentsOpen = false;
+
+  bool get _canPlay => mounted && _isScreenVisible && !_commentsOpen;
+
+  void _playCurrent() {
+    if (_canPlay) {
+      _controllers[_currentIndex]?.play();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -55,7 +70,9 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
         state == AppLifecycleState.detached) {
       _pauseAll();
     } else if (state == AppLifecycleState.resumed) {
-      _controllers[_currentIndex]?.play();
+      // Only resume if the reels tab is actually on screen — the app can be
+      // backgrounded and resumed while the user is on another tab.
+      _playCurrent();
     }
   }
 
@@ -170,7 +187,9 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
       await controller.initialize();
       if (!mounted) return;
       await controller.setLooping(true);
-      if (index == _currentIndex) {
+      // Re-check visibility after the async gap: the user may have navigated
+      // to another tab/screen while the video was buffering.
+      if (index == _currentIndex && _canPlay) {
         await controller.play();
       }
       if (mounted) setState(() {});
@@ -196,7 +215,9 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   void _onPageChanged(int index) {
     _controllers[_currentIndex]?.pause();
     setState(() => _currentIndex = index);
-    _controllers[index]?.play();
+    if (_canPlay) {
+      _controllers[index]?.play();
+    }
 
     // Preload the next two reels
     for (final next in [index + 1, index + 2]) {
@@ -244,6 +265,7 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
     if (authState is! AuthAuthenticated) return;
 
     // Pause while comments are open
+    _commentsOpen = true;
     _controllers[_currentIndex]?.pause();
 
     await showModalBottomSheet(
@@ -272,9 +294,8 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
     );
 
     // Resume after sheet closes
-    if (mounted) {
-      _controllers[_currentIndex]?.play();
-    }
+    _commentsOpen = false;
+    _playCurrent();
   }
 
   @override
@@ -282,12 +303,14 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
     return VisibilityDetector(
       key: const Key('reels-screen'),
       onVisibilityChanged: (info) {
-        if (info.visibleFraction == 0) {
-          // Tab switched away — stop everything
+        if (info.visibleFraction < 0.1) {
+          // Tab switched away or a screen was pushed on top — stop everything
+          _isScreenVisible = false;
           _pauseAll();
-        } else if (info.visibleFraction == 1) {
+        } else if (info.visibleFraction > 0.9) {
           // Tab switched back — resume current reel
-          _controllers[_currentIndex]?.play();
+          _isScreenVisible = true;
+          _playCurrent();
         }
       },
       child: Scaffold(
@@ -329,6 +352,7 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
                   onLikeToggle: () => _onLikeToggle(index),
                   onCommentTap: () => _onCommentTap(index),
                   isVisible: index == _currentIndex,
+                  canAutoPlay: () => _canPlay,
                 );
               },
             ),
@@ -388,6 +412,7 @@ class _ReelItem extends StatefulWidget {
   final VoidCallback onLikeToggle;
   final VoidCallback onCommentTap;
   final bool isVisible;
+  final bool Function() canAutoPlay;
 
   const _ReelItem({
     required this.post,
@@ -395,6 +420,7 @@ class _ReelItem extends StatefulWidget {
     required this.onLikeToggle,
     required this.onCommentTap,
     required this.isVisible,
+    required this.canAutoPlay,
   });
 
   @override
@@ -498,7 +524,9 @@ class _ReelItemState extends State<_ReelItem>
       onVisibilityChanged: (info) {
         if (!mounted) return;
         if (widget.videoController != null && widget.isVisible) {
-          if (info.visibleFraction > 0.5) {
+          // canAutoPlay guards against resuming while the screen is hidden
+          // (other tab, pushed route) or the comments sheet is open.
+          if (info.visibleFraction > 0.5 && widget.canAutoPlay()) {
             widget.videoController!.play();
             if (mounted) setState(() => _isPlaying = true);
           } else {
