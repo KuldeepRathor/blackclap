@@ -1,99 +1,110 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '../../../blocs/auth/auth_bloc.dart';
-import '../../../blocs/auth/auth_event.dart';
-import '../../../blocs/auth/auth_state.dart';
+import '../../../blocs/forgot_password/forgot_password_cubit.dart';
 import '../../../constants/color_constants.dart';
+import '../../../repositories/user_repository.dart';
 import '../../../utils/theme_colors.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+/// Step 3 of password reset: set a new password using the verified [code].
+class ResetPasswordScreen extends StatelessWidget {
+  final String email;
+  final String code;
+
+  const ResetPasswordScreen({
+    super.key,
+    required this.email,
+    required this.code,
+  });
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (ctx) => ForgotPasswordCubit(ctx.read<UserRepository>()),
+      child: _ResetPasswordView(email: email, code: code),
+    );
+  }
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _ResetPasswordView extends StatefulWidget {
+  final String email;
+  final String code;
+
+  const _ResetPasswordView({required this.email, required this.code});
+
+  @override
+  State<_ResetPasswordView> createState() => _ResetPasswordViewState();
+}
+
+class _ResetPasswordViewState extends State<_ResetPasswordView> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmController = TextEditingController();
   bool _obscurePassword = true;
 
   @override
   void dispose() {
-    _emailController.dispose();
     _passwordController.dispose();
+    _confirmController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<AuthBloc, AuthState>(
+    return BlocConsumer<ForgotPasswordCubit, ForgotPasswordState>(
       listener: (context, state) {
-        if (state is AuthAuthenticated) {
-          context.go('/home');
-        } else if (state is AuthError) {
+        if (state.status == ForgotPasswordStatus.success) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message)),
+            const SnackBar(
+              content: Text('Password reset. Please log in with your new password.'),
+            ),
+          );
+          context.go('/login');
+        } else if (state.status == ForgotPasswordStatus.failure) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.error ?? 'Something went wrong')),
           );
         }
       },
       builder: (context, state) {
+        final isLoading = state.status == ForgotPasswordStatus.loading;
         return Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back, color: context.primaryText),
+              onPressed: () => context.pop(),
+            ),
+          ),
           body: SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Spacer(),
                   const Text(
-                    'Blackclap',
+                    'New password',
                     style: TextStyle(
-                      fontSize: 48,
+                      fontSize: 32,
                       fontWeight: FontWeight.bold,
                       color: AppColors.accent,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Connect with friends and share moments',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: context.primaryText,
-                    ),
+                    'Choose a new password for your account.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 16, color: context.primaryText),
                   ),
-                  const SizedBox(height: 64),
+                  const SizedBox(height: 32),
                   Form(
                     key: _formKey,
                     child: Column(
                       children: [
                         TextFormField(
-                          controller: _emailController,
-                          decoration: InputDecoration(
-                            labelText: 'Email',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            prefixIcon: const Icon(Icons.email_outlined),
-                          ),
-                          keyboardType: TextInputType.emailAddress,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter your email';
-                            }
-                            if (!value.contains('@')) {
-                              return 'Please enter a valid email';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
                           controller: _passwordController,
                           decoration: InputDecoration(
-                            labelText: 'Password',
+                            labelText: 'New password',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -114,7 +125,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           obscureText: _obscurePassword,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Please enter your password';
+                              return 'Please enter a password';
                             }
                             if (value.length < 6) {
                               return 'Password must be at least 6 characters';
@@ -122,33 +133,42 @@ class _LoginScreenState extends State<LoginScreen> {
                             return null;
                           },
                         ),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () => context.push('/forgot-password'),
-                            child: const Text(
-                              'Forgot password?',
-                              style: TextStyle(
-                                color: AppColors.accent,
-                                fontWeight: FontWeight.w600,
-                              ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _confirmController,
+                          decoration: InputDecoration(
+                            labelText: 'Confirm password',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
+                            prefixIcon: const Icon(Icons.lock_outlined),
                           ),
+                          obscureText: _obscurePassword,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please confirm your password';
+                            }
+                            if (value != _passwordController.text) {
+                              return 'Passwords do not match';
+                            }
+                            return null;
+                          },
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 24),
                         SizedBox(
                           width: double.infinity,
                           height: 50,
                           child: ElevatedButton(
-                            onPressed: state is AuthLoading
+                            onPressed: isLoading
                                 ? null
                                 : () {
                                     if (_formKey.currentState!.validate()) {
-                                      context.read<AuthBloc>().add(
-                                            AuthLoginRequested(
-                                              email: _emailController.text,
-                                              password: _passwordController.text,
-                                            ),
+                                      context
+                                          .read<ForgotPasswordCubit>()
+                                          .resetPassword(
+                                            widget.email,
+                                            widget.code,
+                                            _passwordController.text,
                                           );
                                     }
                                   },
@@ -159,12 +179,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            child: state is AuthLoading
+                            child: isLoading
                                 ? const CircularProgressIndicator(
                                     color: AppColors.onAccent,
                                   )
                                 : const Text(
-                                    'Login',
+                                    'Reset password',
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
@@ -175,28 +195,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  TextButton(
-                    onPressed: () {
-                      context.go('/signup');
-                    },
-                    child: RichText(
-                      text: TextSpan(
-                        text: "Don't have an account? ",
-                        style: TextStyle(color: context.primaryText),
-                        children: [
-                          TextSpan(
-                            text: 'Sign Up',
-                            style: TextStyle(
-                              color: AppColors.accent,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
                 ],
               ),
             ),

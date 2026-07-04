@@ -31,6 +31,9 @@ class AppUrl {
 
   static String get register => '$baseUrl/auth/register';
   static String get login => '$baseUrl/auth/login';
+  static String get forgotPassword => '$baseUrl/auth/forgot-password';
+  static String get verifyResetCode => '$baseUrl/auth/verify-reset-code';
+  static String get resetPassword => '$baseUrl/auth/reset-password';
 
   // ─── Users & Profiles ────────────────────────────────────────────────────
 
