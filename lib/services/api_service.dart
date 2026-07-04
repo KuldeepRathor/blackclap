@@ -158,6 +158,57 @@ class ApiService {
     }
   }
 
+  /// Request a password-reset code be emailed. The backend always responds 200
+  /// with a generic message (it never reveals whether the email is registered).
+  Future<void> requestPasswordReset(String email) async {
+    final response = await _sendRequest(
+      'POST',
+      Uri.parse(AppUrl.forgotPassword),
+      requireAuth: false,
+      body: json.encode({'email': email}),
+    );
+    if (response.statusCode != 200) {
+      throw Exception(_parseError(response));
+    }
+  }
+
+  /// Validate a reset code without consuming it (gates the new-password screen).
+  Future<void> verifyResetCode({
+    required String email,
+    required String code,
+  }) async {
+    final response = await _sendRequest(
+      'POST',
+      Uri.parse(AppUrl.verifyResetCode),
+      requireAuth: false,
+      body: json.encode({'email': email, 'code': code}),
+    );
+    if (response.statusCode != 200) {
+      throw Exception(_parseError(response));
+    }
+  }
+
+  /// Consume the reset code and set a new password.
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    final response = await _sendRequest(
+      'POST',
+      Uri.parse(AppUrl.resetPassword),
+      requireAuth: false,
+      body: json.encode({
+        'email': email,
+        'code': code,
+        'new_password': newPassword,
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw Exception(_parseError(response));
+    }
+  }
+
   // --- Users & Profiles API ---
 
   Future<Map<String, dynamic>> getMe() async {

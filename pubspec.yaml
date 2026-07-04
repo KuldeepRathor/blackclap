@@ -37,6 +37,9 @@ dependencies:
   # HTTP requests
   http: ^1.2.2
 
+  # External links (open web pages in browser)
+  url_launcher: ^6.3.2
+
   # Realtime chat (native FastAPI WebSocket)
   web_socket_channel: ^3.0.1
   
@@ -64,7 +67,6 @@ dependencies:
   flutter_cache_manager: ^3.3.1
   firebase_core: ^4.1.1
   firebase_auth: ^6.1.0
-  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

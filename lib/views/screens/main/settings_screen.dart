@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../blocs/theme/theme_cubit.dart';
 import '../../../constants/color_constants.dart';
@@ -50,6 +51,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () {},
           ),
           _SettingsTile(
+            icon: Icons.block_outlined,
+            label: 'Blocked Accounts',
+            onTap: () => context.push('/blocked-users'),
+          ),
+          _SettingsTile(
             icon: Icons.person_remove_outlined,
             label: 'Delete Account',
             onTap: _confirmDeleteAccount,
@@ -71,16 +77,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () {},
           ),
           _SectionDivider(),
-          _SectionHeader(label: 'About'),
-          _SettingsTile(
-            icon: Icons.info_outline,
-            label: 'App Version',
-            trailing: Text(
-              '1.0.0',
-              style: TextStyle(color: colors.onSurface.withValues(alpha: 0.5), fontSize: 14),
-            ),
-            onTap: () {},
-          ),
+          _SectionHeader(label: 'Legal & Support'),
           _SettingsTile(
             icon: Icons.description_outlined,
             label: 'Terms of Service',
@@ -100,6 +97,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: Icons.help_outline,
             label: 'Help & Support',
             onTap: () => _openLink('/support'),
+          ),
+          _SectionDivider(),
+          _SectionHeader(label: 'About'),
+          _SettingsTile(
+            icon: Icons.info_outline,
+            label: 'App Version',
+            trailing: Text(
+              '1.0.0',
+              style: TextStyle(color: colors.onSurface.withValues(alpha: 0.5), fontSize: 14),
+            ),
+            onTap: () {},
           ),
           const SizedBox(height: 32),
         ],
