@@ -46,6 +46,14 @@ class UserRepository implements UserRepositoryInterface {
   final StreamController<UserModel?> _authStateController = StreamController<UserModel?>.broadcast();
   UserModel? _cachedUser;
 
+  UserRepository() {
+    // Wired once here so ApiService (a plain class with no BuildContext/bloc
+    // reference) can trigger a real logout when a refresh attempt confirms
+    // the session is truly dead. Reuses the existing signOut() -> null on
+    // authStateChanges -> AuthBloc emits AuthUnauthenticated plumbing.
+    ApiService.onSessionExpired = signOut;
+  }
+
   @override
   Future<List<UserModel>> getUsers() async {
     final userData = MockDataService.getUsers();
@@ -127,6 +135,19 @@ class UserRepository implements UserRepositoryInterface {
 
   @override
   Future<void> signOut() async {
+    // Best-effort server-side revocation — must never block local logout
+    // (the user has to be able to log out even offline, and when this is
+    // called via ApiService.onSessionExpired the token is already dead
+    // server-side, making this a harmless no-op).
+    final refreshToken = await TokenStorage.getRefreshToken();
+    if (refreshToken != null) {
+      try {
+        await _apiService.logout(refreshToken);
+      } catch (_) {
+        // Ignore — local clearing below always proceeds regardless.
+      }
+    }
+
     await TokenStorage.clearTokens();
     _cachedUser = null;
     _authStateController.add(null);

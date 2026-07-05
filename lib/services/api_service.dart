@@ -7,6 +7,17 @@ import 'token_storage.dart';
 import 'http_logger.dart';
 
 class ApiService {
+  /// Invoked when a refresh attempt confirms the session is truly dead (the
+  /// refresh token itself was rejected — expired, revoked, or reused). Wired
+  /// up once at app startup by UserRepository to trigger a real logout.
+  static void Function()? onSessionExpired;
+
+  /// Shared across every ApiService instance (there's no DI container here —
+  /// ApiService is instantiated fresh in many places) so concurrent 401s
+  /// piggyback on the same refresh attempt instead of racing the rotating
+  /// refresh token against each other.
+  static Future<bool>? _refreshInFlight;
+
   Future<Map<String, String>> _getHeaders({bool requireAuth = true}) async {
     final headers = {
       'Content-Type': 'application/json',
@@ -41,10 +52,10 @@ class ApiService {
     return 'Server error (status ${response.statusCode})';
   }
 
-  Future<http.Response> _sendRequest(
+  Future<http.Response> _performOnce(
     String method,
     Uri url, {
-    bool requireAuth = true,
+    required bool requireAuth,
     dynamic body,
     Map<String, String>? headers,
   }) async {
@@ -96,6 +107,84 @@ class ApiService {
     }
   }
 
+  /// Sends a request; on a 401 from an auth-required call, silently attempts
+  /// one token refresh and retries the request exactly once. Set
+  /// [allowAuthRetry] to false for the auth endpoints themselves (login,
+  /// register, refresh, logout) where a 401 is a real failure, not an
+  /// expired-token situation.
+  Future<http.Response> _sendRequest(
+    String method,
+    Uri url, {
+    bool requireAuth = true,
+    dynamic body,
+    Map<String, String>? headers,
+    bool allowAuthRetry = true,
+  }) async {
+    final response = await _performOnce(
+      method,
+      url,
+      requireAuth: requireAuth,
+      body: body,
+      headers: headers,
+    );
+
+    if (response.statusCode == 401 && requireAuth && allowAuthRetry) {
+      final refreshed = await _refreshAccessToken();
+      if (refreshed) {
+        return _performOnce(
+          method,
+          url,
+          requireAuth: requireAuth,
+          body: body,
+          headers: headers,
+        );
+      }
+    }
+    return response;
+  }
+
+  /// Deduplicates concurrent refresh attempts: if a refresh is already in
+  /// flight (started by another request that also 401'd), piggyback on it
+  /// instead of racing it with a second /auth/refresh call — the refresh
+  /// token rotates, so only one attempt can ever succeed.
+  Future<bool> _refreshAccessToken() {
+    return _refreshInFlight ??= _doRefresh().whenComplete(() {
+      _refreshInFlight = null;
+    });
+  }
+
+  Future<bool> _doRefresh() async {
+    final refreshToken = await TokenStorage.getRefreshToken();
+    if (refreshToken == null) return false;
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse(AppUrl.refresh),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'refresh_token': refreshToken}),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        await TokenStorage.saveTokens(
+          accessToken: data['access_token'] as String,
+          refreshToken: data['refresh_token'] as String,
+        );
+        return true;
+      }
+
+      // Refresh token itself was rejected — the session is truly dead.
+      ApiService.onSessionExpired?.call();
+      return false;
+    } catch (_) {
+      // Network/timeout talking to /auth/refresh — a transient failure, not
+      // a confirmed-dead session. Don't force a logout on a flaky network.
+      return false;
+    }
+  }
+
   // --- Auth API ---
 
   Future<Map<String, dynamic>> register({
@@ -108,6 +197,7 @@ class ApiService {
       'POST',
       url,
       requireAuth: false,
+      allowAuthRetry: false,
       body: json.encode({
         'email': email,
         'username': username,
@@ -138,6 +228,7 @@ class ApiService {
       'POST',
       url,
       requireAuth: false,
+      allowAuthRetry: false,
       body: json.encode({
         'email_or_username': emailOrUsername,
         'password': password,
@@ -204,6 +295,26 @@ class ApiService {
         'new_password': newPassword,
       }),
     );
+    if (response.statusCode != 200) {
+      throw Exception(_parseError(response));
+    }
+  }
+
+  /// Revokes a single refresh token server-side. The backend always returns
+  /// 200 (logout is idempotent), so this never throws on a 401.
+  Future<void> logout(String refreshToken) async {
+    await _sendRequest(
+      'POST',
+      Uri.parse(AppUrl.logout),
+      requireAuth: false,
+      allowAuthRetry: false,
+      body: json.encode({'refresh_token': refreshToken}),
+    );
+  }
+
+  /// Revokes every refresh token for the current user (all devices).
+  Future<void> logoutAll() async {
+    final response = await _sendRequest('POST', Uri.parse(AppUrl.logoutAll), body: '{}');
     if (response.statusCode != 200) {
       throw Exception(_parseError(response));
     }
@@ -371,6 +482,7 @@ class ApiService {
   /// Uploads a profile image and returns the public blob URL.
   ///
   /// Step 1 — POST /uploads/url  →  get a short-lived Azure SAS upload URL.
+  // ignore: unintended_html_in_doc_comment
   /// Step 2 — PUT <sas_url>      →  stream the file directly to Azure Blob Storage.
   /// Step 3 — PATCH /users/me    →  persist the blob URL on the user profile.
   Future<String> uploadProfileImage(File file) async {
