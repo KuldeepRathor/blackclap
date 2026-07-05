@@ -34,6 +34,9 @@ class AppUrl {
   static String get forgotPassword => '$baseUrl/auth/forgot-password';
   static String get verifyResetCode => '$baseUrl/auth/verify-reset-code';
   static String get resetPassword => '$baseUrl/auth/reset-password';
+  static String get refresh => '$baseUrl/auth/refresh';
+  static String get logout => '$baseUrl/auth/logout';
+  static String get logoutAll => '$baseUrl/auth/logout-all';
 
   // ─── Users & Profiles ────────────────────────────────────────────────────
 
