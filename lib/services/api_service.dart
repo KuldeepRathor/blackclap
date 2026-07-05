@@ -242,6 +242,16 @@ class ApiService {
     }
   }
 
+  /// Soft-deletes the authenticated user's account (30-day grace period; the
+  /// account is restored by logging back in before then). Backend: DELETE /users/me.
+  Future<void> deleteMe() async {
+    final url = Uri.parse(AppUrl.me);
+    final response = await _sendRequest('DELETE', url, requireAuth: true);
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception(_parseError(response));
+    }
+  }
+
   Future<Map<String, dynamic>> getUserProfile(String username) async {
     final url = Uri.parse(AppUrl.userProfile(username));
     final response = await _sendRequest(

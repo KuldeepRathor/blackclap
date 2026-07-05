@@ -38,7 +38,7 @@ dependencies:
   http: ^1.2.2
 
   # External links (open web pages in browser)
-  url_launcher: ^6.3.1
+  url_launcher: ^6.3.2
 
   # Realtime chat (native FastAPI WebSocket)
   web_socket_channel: ^3.0.1
