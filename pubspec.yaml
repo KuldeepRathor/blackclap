@@ -68,6 +68,9 @@ dependencies:
   firebase_core: ^4.1.1
   firebase_auth: ^6.1.0
 
+  # Native splash screen (also provides preserve/remove runtime API)
+  flutter_native_splash: ^2.4.6
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -81,6 +84,24 @@ dev_dependencies:
 
   # App launcher icon generation
   flutter_launcher_icons: ^0.14.4
+
+flutter_native_splash:
+  # The logo is black artwork on white, so use a white background — the logo's
+  # own white background blends seamlessly into the splash.
+  color: "#FFFFFF"
+  color_dark: "#FFFFFF"
+  image: "assets/splash_logo.png"
+  image_dark: "assets/splash_logo.png"
+  android_12:
+    # Android 12+ masks the image to a circle; splash_android12.png has padding
+    # so the whole logo sits comfortably inside that circle.
+    color: "#FFFFFF"
+    color_dark: "#FFFFFF"
+    image: "assets/splash_android12.png"
+    image_dark: "assets/splash_android12.png"
+  android: true
+  ios: true
+  web: false
 
 flutter_launcher_icons:
   android: true

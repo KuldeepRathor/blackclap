@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:go_router/go_router.dart';
 import 'package:persistent_bottom_nav_bar/persistent_bottom_nav_bar.dart';
 import 'views/screens/auth/login_screen.dart';
@@ -37,9 +38,15 @@ import 'constants/color_constants.dart';
 // import 'firebase_options.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  // Keep the native splash on-screen until the initial auth check resolves,
+  // so there's no blank flash between the splash and the first Flutter frame.
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   // Skip Firebase initialization as per request to run only custom backend auth APIs
   // await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Safety net: never let the splash hang if the auth check stalls.
+  Future.delayed(const Duration(seconds: 5), FlutterNativeSplash.remove);
 
   runApp(const BlackClapApp());
 }
@@ -83,6 +90,12 @@ class BlackClapApp extends StatelessWidget {
           listenWhen: (previous, current) =>
               previous.runtimeType != current.runtimeType,
           listener: (context, state) {
+            // Once the initial auth check settles, dismiss the native splash.
+            if (state is AuthAuthenticated ||
+                state is AuthUnauthenticated ||
+                state is AuthError) {
+              FlutterNativeSplash.remove();
+            }
             final chatRepo = context.read<ChatRepository>();
             if (state is AuthAuthenticated) {
               chatRepo.connectSocket();
