@@ -134,6 +134,34 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _refreshReels() async {
+    try {
+      final raw = await _postApiService.getReels(limit: 20);
+      if (!mounted) return;
+      final posts = raw
+          .map((m) => PostModel.fromApiResponse(m))
+          .where((p) => p.videoUrls.isNotEmpty)
+          .toList();
+      _pauseAll();
+      _disposeControllers();
+      setState(() {
+        _reels = posts;
+        _currentIndex = 0;
+        _hasMore = true;
+        _error = null;
+      });
+      if (_pageController.hasClients) {
+        _pageController.jumpToPage(0);
+      }
+      if (_reels.isNotEmpty) {
+        _initializeVideo(0);
+        _initializeVideo(1);
+      }
+    } catch (e) {
+      debugPrint('Error refreshing reels: $e');
+    }
+  }
+
   Future<void> _loadMoreReels() async {
     if (_isLoadingMore || !_hasMore || _reels.isEmpty) return;
     setState(() => _isLoadingMore = true);
@@ -340,21 +368,27 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
               ),
             )
           else
-            PageView.builder(
-              controller: _pageController,
-              scrollDirection: Axis.vertical,
-              itemCount: _reels.length,
-              onPageChanged: _onPageChanged,
-              itemBuilder: (context, index) {
-                return _ReelItem(
-                  post: _reels[index],
-                  videoController: _controllers[index],
-                  onLikeToggle: () => _onLikeToggle(index),
-                  onCommentTap: () => _onCommentTap(index),
-                  isVisible: index == _currentIndex,
-                  canAutoPlay: () => _canPlay,
-                );
-              },
+            RefreshIndicator(
+              color: AppColors.accent,
+              backgroundColor: Colors.black,
+              onRefresh: _refreshReels,
+              child: PageView.builder(
+                controller: _pageController,
+                scrollDirection: Axis.vertical,
+                physics: const AlwaysScrollableScrollPhysics(),
+                itemCount: _reels.length,
+                onPageChanged: _onPageChanged,
+                itemBuilder: (context, index) {
+                  return _ReelItem(
+                    post: _reels[index],
+                    videoController: _controllers[index],
+                    onLikeToggle: () => _onLikeToggle(index),
+                    onCommentTap: () => _onCommentTap(index),
+                    isVisible: index == _currentIndex,
+                    canAutoPlay: () => _canPlay,
+                  );
+                },
+              ),
             ),
 
           // Top bar — dynamic height, no fixed value
