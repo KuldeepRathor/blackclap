@@ -10,6 +10,7 @@ import '../../../blocs/chat/chat_bloc.dart';
 import '../../../constants/color_constants.dart';
 import '../../../models/conversation_model.dart';
 import '../../../repositories/chat_repository.dart';
+import '../../../services/push_notification_service.dart';
 import '../../../utils/theme_colors.dart';
 import '../../widgets/message_bubble.dart';
 
@@ -36,6 +37,7 @@ class ChatScreen extends StatelessWidget {
         currentUserId: currentUserId,
       )..add(const ChatHistoryLoadRequested()),
       child: _ChatView(
+        conversationId: conversationId,
         conversation: conversation,
         currentUserId: currentUserId,
       ),
@@ -44,10 +46,15 @@ class ChatScreen extends StatelessWidget {
 }
 
 class _ChatView extends StatefulWidget {
+  final String conversationId;
   final ConversationModel? conversation;
   final String currentUserId;
 
-  const _ChatView({required this.conversation, required this.currentUserId});
+  const _ChatView({
+    required this.conversationId,
+    required this.conversation,
+    required this.currentUserId,
+  });
 
   @override
   State<_ChatView> createState() => _ChatViewState();
@@ -65,11 +72,19 @@ class _ChatViewState extends State<_ChatView> {
     super.initState();
     // Idempotent — connect in case we arrived before the app-level connect ran.
     context.read<ChatRepository>().connectSocket();
+    // Suppress push notifications for the conversation currently on screen —
+    // its messages arrive live over the WebSocket, so a push would double-alert.
+    PushNotificationService.instance.activeConversationId =
+        widget.conversationId;
     _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
+    if (PushNotificationService.instance.activeConversationId ==
+        widget.conversationId) {
+      PushNotificationService.instance.activeConversationId = null;
+    }
     _typingTimer?.cancel();
     _scrollController.dispose();
     _textController.dispose();

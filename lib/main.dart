@@ -34,16 +34,22 @@ import 'repositories/post_repository.dart';
 import 'repositories/chat_repository.dart';
 import 'models/conversation_model.dart';
 import 'constants/color_constants.dart';
-// import 'package:firebase_core/firebase_core.dart';
-// import 'firebase_options.dart';
+import 'services/push_notification_service.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 void main() async {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   // Keep the native splash on-screen until the initial auth check resolves,
   // so there's no blank flash between the splash and the first Flutter frame.
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
-  // Skip Firebase initialization as per request to run only custom backend auth APIs
-  // await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Firebase is initialized for Cloud Messaging (push notifications) only —
+  // app auth still runs entirely through the custom backend APIs.
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Register FCM listeners + local-notification channel up front so background
+  // messages are handled even before login.
+  await PushNotificationService.instance.initialize();
 
   // Safety net: never let the splash hang if the auth check stalls.
   Future.delayed(const Duration(seconds: 5), FlutterNativeSplash.remove);
@@ -99,8 +105,12 @@ class BlackClapApp extends StatelessWidget {
             final chatRepo = context.read<ChatRepository>();
             if (state is AuthAuthenticated) {
               chatRepo.connectSocket();
+              // Register this device's FCM token for push delivery.
+              PushNotificationService.instance.registerToken();
             } else if (state is AuthUnauthenticated) {
               chatRepo.disconnectSocket();
+              // Stop pushing to this device once logged out.
+              PushNotificationService.instance.unregisterToken();
             }
           },
           child: BlocBuilder<AuthBloc, AuthState>(
@@ -133,6 +143,7 @@ class BlackClapApp extends StatelessWidget {
 
   GoRouter _createRouter(AuthState authState) {
     return GoRouter(
+      navigatorKey: rootNavigatorKey,
       initialLocation: authState is AuthAuthenticated ? '/home' : '/login',
       redirect: (context, state) {
         // Read current auth state at navigation time, not the stale closure value.
