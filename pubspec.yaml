@@ -68,6 +68,10 @@ dependencies:
   firebase_core: ^4.1.1
   firebase_auth: ^6.1.0
 
+  # Push notifications (FCM) + local display of data-only messages
+  firebase_messaging: ^16.0.0
+  flutter_local_notifications: ^18.0.1
+
   # Native splash screen (also provides preserve/remove runtime API)
   flutter_native_splash: ^2.4.6
 

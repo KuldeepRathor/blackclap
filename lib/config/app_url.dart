@@ -1,10 +1,9 @@
-
 class AppUrl {
   // ─── Domain Configuration ────────────────────────────────────────────────
 
   // 10.0.2.2 → Android emulator, 192.168.x.x → physical device (must be same Wi-Fi)
-  static const String _devHost = '192.168.31.139';//(physical device)
-    // static const String _devHost = '10.0.2.2';//(android emulator)
+  static const String _devHost = '192.168.31.139'; //(physical device)
+  // static const String _devHost = '10.0.2.2';//(android emulator)
   static const String _devPort = '8000';
 
   // Update _prodHost when deploying to production
@@ -52,8 +51,10 @@ class AppUrl {
 
   static String followUser(String username) => '$baseUrl/follows/$username';
   static String unfollowUser(String username) => '$baseUrl/follows/$username';
-  static String followers(String username) => '$baseUrl/follows/$username/followers';
-  static String following(String username) => '$baseUrl/follows/$username/following';
+  static String followers(String username) =>
+      '$baseUrl/follows/$username/followers';
+  static String following(String username) =>
+      '$baseUrl/follows/$username/following';
 
   // ─── Uploads ─────────────────────────────────────────────────────────────
 
@@ -67,6 +68,13 @@ class AppUrl {
   /// POST body: { "filename": "photo.jpg", "upload_type": "profile_image" }
   /// Response: { "upload_url", "blob_url", "blob_name", "content_type", "expires_in_seconds" }
   static String get uploadUrl => '$baseUrl/uploads/url';
+
+  // ─── Devices / Push ──────────────────────────────────────────────────────
+
+  /// Relative paths for ApiService generic post()/delete() (which prepend
+  /// baseUrl). Register the current device's FCM token, or unregister it.
+  static String get registerDevice => '/devices';
+  static String unregisterDevice(String token) => '/devices/$token';
 
   // ─── Chat ────────────────────────────────────────────────────────────────
 

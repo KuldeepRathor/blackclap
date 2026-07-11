@@ -26,7 +26,7 @@ class ApiService {
 
     if (requireAuth) {
       final token = await TokenStorage.getAccessToken();
-      if (token != null) {
+      if (token != null) { 
         headers['Authorization'] = 'Bearer $token';
       }
     }
